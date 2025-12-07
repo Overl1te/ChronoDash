@@ -2,32 +2,20 @@
 import customtkinter as ctk
 import threading
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 import json
-from PIL import Image, ImageQt, ImageTk
+from PIL import Image, ImageTk
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtCore import QTimer
 from core.widget_manager import WidgetManager
 import os
+from core.qt_bridge import get_qt_bridge
 
 from widgets.base_widget import BaseDesktopWidget
 os.environ["QT_LOGGING_RULES"] = "qt5ct.debug=false"  # или просто
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="PySide6")
 
-# Глобальное приложение Qt нужно только для превью
-_qt_app = None
-
-def get_qt_app():
-    global _qt_app
-    if _qt_app is None:
-        _qt_app = QApplication.instance() or QApplication([])
-    return _qt_app
-
-# ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
-# Замени весь класс WidgetPreview в dashboard.py на этот:
-# ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
 
 class WidgetPreview(ctk.CTkCanvas):
     def __init__(self, master):
@@ -39,13 +27,21 @@ class WidgetPreview(ctk.CTkCanvas):
             self.delete("all")
             return
 
-        # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
-        # Самое важное — используем статический метод!
+        # Убедимся что QApplication существует
+        app = QApplication.instance()
+        if not app:
+            print("⚠️ Нет QApplication для рендеринга превью")
+            return
+
         pixmap = BaseDesktopWidget.render_to_pixmap(cfg)
-        # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+        
+        if pixmap.isNull():
+            print("⚠️ Не удалось создать pixmap для превью")
+            return
 
         # Конвертируем в PhotoImage
         qimage = pixmap.toImage()
+        from PIL import Image
         pil_img = Image.fromqimage(qimage)
         pil_img = pil_img.resize((400, 225), Image.LANCZOS)
 
@@ -66,6 +62,8 @@ class WidgetsEditor:
 
         self.current_cfg = None
         self.preview = None
+
+        self.qt_bridge = get_qt_bridge()
 
         self._build_ui()
         self.refresh_list()
@@ -151,6 +149,18 @@ class WidgetsEditor:
         self.opacity_slider.pack(fill="x", padx=20, pady=5)
         ctk.CTkLabel(tab_appearance, text="Прозрачность").pack()
 
+        ctk.CTkLabel(tab_appearance, text="Формат времени:").pack(anchor="w", padx=20)
+        self.time_format_entry = ctk.CTkEntry(tab_appearance)
+        self.time_format_entry.pack(fill="x", padx=20, pady=2)
+        self.time_format_entry.insert(0, "HH:mm:ss")
+        self.time_format_entry.bind("<KeyRelease>", lambda e: self.update_cfg_path("content", "format", self.time_format_entry.get()))
+
+        ctk.CTkLabel(tab_appearance, text="Цвет (HEX):").pack(anchor="w", padx=20)
+        self.color_entry = ctk.CTkEntry(tab_appearance)
+        self.color_entry.pack(fill="x", padx=20, pady=2)
+        self.color_entry.insert(0, "#00FF88")
+        self.color_entry.bind("<KeyRelease>", lambda e: self.update_cfg_path("content", "color", self.color_entry.get()))
+
         self.click_through_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(tab_appearance, text="Клик насквозь", variable=self.click_through_var,
                         command=lambda: self.update_cfg("click_through", self.click_through_var.get())).pack(anchor="w", padx=20, pady=5)
@@ -201,6 +211,12 @@ class WidgetsEditor:
         # === Прозрачность ===
         self.opacity_slider.set(cfg.get("opacity", 255))
 
+        content = cfg.get("content", {})
+        self.time_format_entry.delete(0, tk.END)
+        self.time_format_entry.insert(0, content.get("format", "HH:mm:ss"))
+        self.color_entry.delete(0, tk.END)
+        self.color_entry.insert(0, content.get("color", "#00FF88"))
+
         # === Флаги ===
         self.click_through_var.set(cfg.get("click_through", True))
         self.always_top_var.set(cfg.get("always_on_top", True))
@@ -222,27 +238,55 @@ class WidgetsEditor:
         if not self.current_cfg:
             return
 
+        print(f"📝 Изменение {key} = {value}")
         self.current_cfg[key] = value
         widget_id = self.current_cfg["id"]
-
-        if widget_id in self.wm.widgets:
-            widget = self.wm.widgets[widget_id]
-            # Просто передаём обновлённый конфиг — виджет сам разберётся
-            widget.update_config(self.current_cfg)
-
+        
+        # Сохраняем на диск
         self.wm.save_config()
+        
+        # ОБНОВЛЯЕМ ЧЕРЕЗ МОСТ (сигнал Qt)
+        if self.qt_bridge:
+            print(f"📡 Отправляем сигнал в Qt поток")
+            # Создаем копию конфига
+            config_copy = self.current_cfg.copy()
+            # Отправляем сигнал в главный Qt поток
+            self.qt_bridge.update_widget_signal.emit(config_copy)
+        else:
+            print(f"⚠️ Qt мост не доступен, обновляем напрямую")
+            if widget_id in self.wm.widgets:
+                self.wm.update_widget_config(widget_id, self.current_cfg.copy())
+
         self.preview.update_preview(self.current_cfg)
 
     def update_cfg_path(self, *path, value):
         if not self.current_cfg:
             return
+
+        print(f"📝 Изменение {'.'.join(path)} = {value}")
+        
         d = self.current_cfg
         for p in path[:-1]:
             if p not in d:
                 d[p] = {}
             d = d[p]
         d[path[-1]] = value
-        self.update_cfg("attach_to_window", self.current_cfg.get("attach_to_window", {}))
+
+        widget_id = self.current_cfg["id"]
+        
+        # Сохраняем на диск
+        self.wm.save_config()
+        
+        # ОБНОВЛЯЕМ ЧЕРЕЗ МОСТ
+        if self.qt_bridge:
+            print(f"📡 Отправляем сигнал в Qt поток")
+            config_copy = self.current_cfg.copy()
+            self.qt_bridge.update_widget_signal.emit(config_copy)
+        else:
+            if widget_id in self.wm.widgets:
+                self.wm.update_widget_config(widget_id, self.current_cfg.copy())
+
+        self.preview.update_preview(self.current_cfg)
 
     def on_attach_toggle(self):
         enabled = self.attach_var.get()

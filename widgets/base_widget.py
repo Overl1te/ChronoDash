@@ -2,29 +2,22 @@
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtCore import Qt, QTimer, QMetaObject
+from streamlit import json
 
 
 class BaseDesktopWidget(QWidget):
     def __init__(self, cfg=None):
         super().__init__()
         self.cfg = cfg or {}
-        self.buffer = None
-
-        flags = Qt.FramelessWindowHint | Qt.Tool
-        if self.cfg.get("always_on_top", True):
-            flags |= Qt.WindowStaysOnTopHint
-        if self.cfg.get("click_through", True):
-            flags |= Qt.WindowTransparentForInput
-
-        self.setWindowFlags(flags)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, self.cfg.get("click_through", True))
-
+        print(f"🧩 Создается виджет с cfg: {self.cfg.get('id', 'no-id')}")
+        
+        self._apply_flags()
+        
         self.resize(max(self.cfg.get("width", 320), 10),
                     max(self.cfg.get("height", 180), 10))
         self.move(self.cfg.get("x", 100), self.cfg.get("y", 100))
 
+        # Таймер обновления
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)
         self.timer.start(1000)
@@ -33,7 +26,7 @@ class BaseDesktopWidget(QWidget):
 
     @staticmethod
     def render_to_pixmap(cfg: dict) -> QPixmap:
-        """Возвращает готовый QPixmap с отрисованным виджетом (без создания окна)"""
+        """Статический метод для рендеринга превью"""
         width = max(cfg.get("width", 320), 50)
         height = max(cfg.get("height", 180), 50)
 
@@ -43,7 +36,7 @@ class BaseDesktopWidget(QWidget):
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # Создаём временный виджет БЕЗ родителя и БЕЗ show()
+        # Создаём временный виджет БЕЗ родителя
         if cfg.get("type") == "clock":
             from widgets.clock_widget import ClockWidget
             temp_widget = ClockWidget(cfg.copy())
@@ -51,13 +44,13 @@ class BaseDesktopWidget(QWidget):
             temp_widget = BaseDesktopWidget(cfg.copy())
 
         temp_widget.resize(width, height)
-        temp_widget.draw_widget(painter)        # прямой вызов
+        temp_widget.draw_widget(painter)
 
         painter.end()
         return pixmap
 
     def _apply_flags(self):
-        """Применяет флаги на основе текущего cfg — безопасно и надёжно"""
+        """Применяет флаги окна на основе cfg"""
         flags = Qt.FramelessWindowHint | Qt.Tool
 
         if self.cfg.get("always_on_top", True):
@@ -66,49 +59,36 @@ class BaseDesktopWidget(QWidget):
         if self.cfg.get("click_through", True):
             flags |= Qt.WindowTransparentForInput
 
-        # Это главное: используем Qt internals, чтобы переприменить флаги без глюков
         self.setWindowFlags(flags)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, 
+                         self.cfg.get("click_through", True))
 
-        # Дополнительная страховка от мыши
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, self.cfg.get("click_through", True))
-
-        # Пересоздаём нативное окно (без мерцания!)
-        if self.isVisible():
-            QMetaObject.invokeMethod(self, "show", Qt.QueuedConnection)
+        # Показываем окно если оно было видимым
+        if hasattr(self, 'isVisible') and self.isVisible():
+            self.show()
 
     def update_config(self, new_cfg):
-        """Вызывается извне при изменении настроек"""
-        changed_flags = False
-
-        for key in ["always_on_top", "click_through"]:
-            if self.cfg.get(key) != new_cfg.get(key):
-                changed_flags = True
-
-        # Обновляем конфиг
-        self.cfg.update(new_cfg)
-
-        # Обновляем позицию/размер
-        self.move(self.cfg["x"], self.cfg["y"])
-        self.resize(self.cfg["width"], self.cfg["height"])
-
-        # Если изменились флаги — переприменяем
-        if changed_flags:
-            self._apply_flags()
-
-        self.update()  # перерисовываем
+        """Обновляет конфигурацию виджета"""
+        print(f"🔄 BaseDesktopWidget.update_config() вызван для {self.cfg.get('id', 'unknown')}")
+        self.cfg = new_cfg.copy()
+        
+        # Обновляем флаги окна
+        self._apply_flags()
+        
+        # Обновляем размер и позицию
+        self.resize(max(self.cfg.get("width", 320), 10),
+                    max(self.cfg.get("height", 180), 10))
+        self.move(self.cfg.get("x", 100), self.cfg.get("y", 100))
+        
+        # Форсируем перерисовку
+        self.update()
 
     def paintEvent(self, event):
-        if not self.buffer or self.buffer.size() != self.size():
-            self.buffer = QPixmap(self.size())
-
-        self.buffer.fill(Qt.transparent)
-        painter = QPainter(self.buffer)
+        painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         self.draw_widget(painter)
-        painter.end()
-
-        painter = QPainter(self)
-        painter.drawPixmap(0, 0, self.buffer)
         painter.end()
 
     def draw_widget(self, painter: QPainter):
