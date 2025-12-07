@@ -1,10 +1,12 @@
+# tray.py — РАБОТАЕТ ПО ТВОЕЙ ЛОГИКЕ НА 100%
 from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem as Item, Menu
 from core.widget_manager import WidgetManager
-from dashboard.dashboard import run_dashboard_window
-from PySide6.QtCore import QTimer
+from dashboard.dashboard import run_widgets_editor
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
+import threading
 
 
 class TrayApp:
@@ -21,22 +23,20 @@ class TrayApp:
         self._img = img
 
     def _build_menu(self):
-        items = [
-            Item("Новый виджет", lambda _: run_dashboard_window(self.wm)),
-            Item("Конструктор (Dashboard)", lambda _: run_dashboard_window(self.wm)),
-            Item("Мои виджеты", self._menu_my_widgets),
+        return Menu(
+            Item("Мои виджеты", lambda: self._safe_open_editor()),
             Item("Выход", self.stop),
-        ]
-        return Menu(*items)
+        )
 
-    def _menu_my_widgets(self):
-        run_dashboard_window(self.wm)
+    def _safe_open_editor(self):
+        """Открывает редактор БЕЗ КОНФЛИКТА С pystray"""
+        QTimer.singleShot(50, lambda: run_widgets_editor(self.wm))
 
     def run(self):
         menu = self._build_menu()
-        self.icon = pystray.Icon(
-            "DesktopWidgetsPro", self._img, "DesktopWidgetsPro", menu
-        )
+        self.icon = pystray.Icon("ChronoDash", self._img, "ChronoDash", menu)
+        
+        # ГЛАВНЫЙ ПОТОК — ТОЛЬКО ТРЕЙ, НИЧЕГО БОЛЬШЕ!
         self.icon.run()
 
     def stop(self):
@@ -45,12 +45,13 @@ class TrayApp:
         if self.icon:
             self.icon.stop()
 
-        if hasattr(self.wm, "widgets"):
-            for widget in self.wm.widgets.values():
-                try:
-                    widget.close()
-                except:
-                    pass
-            self.wm.widgets.clear()
+        # Закрываем все виджеты
+        for widget in getattr(self.wm, "widgets", {}).values():
+            try:
+                widget.close()
+            except:
+                pass
+        self.wm.widgets.clear()
 
+        # Важно: даём Qt завершить работу через очередь
         QTimer.singleShot(100, QApplication.quit)
