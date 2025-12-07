@@ -38,7 +38,7 @@ class BaseDesktopWidget(QWidget):
         """Вызывается по таймеру - обновляет виджет"""
         self.update()  # Запускает paintEvent
 
-    def paintEvent(self):
+    def paintEvent(self, event):
         """Отрисовка виджета с очисткой буфера"""
         # Создаем или обновляем буфер если нужно
         if not self.buffer or self.buffer.size() != self.size():
