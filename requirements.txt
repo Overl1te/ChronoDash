@@ -1,5 +1,5 @@
 PySide6>=6.5.0
-pystray>=0.20.0
+pystray
 Pillow>=9.0.0
 pywin32>=305; platform_system=="Windows"
 customtkinter>=5.0.0

@@ -1,1 +1,0 @@
-from .base_widget import BaseDesktopWidget\nfrom .clock_widget import ClockWidget\n

@@ -1,4 +1,3 @@
-# Minimal dashboard using customtkinter. It allows adding a clock template and saving it.
 import customtkinter as ctk
 import threading
 import tkinter as tk
@@ -13,7 +12,7 @@ def _open(widget_manager):
     ctk.set_appearance_mode('dark')
     ctk.set_default_color_theme('blue')
     app = ctk.CTk()
-    app.title('Dashboard — DesktopWidgetsPro')
+    app.title('Dashboard — ChronoDash')
     app.geometry('600x420')
 
     def add_clock():
@@ -29,7 +28,7 @@ def _open(widget_manager):
             "click_through": True,
             "always_on_top": True,
             "attach_to_window": {"enabled": False},
-            "content": {"format": "%H:%M:%S", "font_family": "Consolas", "font_size": 48, "color": "#00FF88"}
+            "content": {"format": "HH:mm:ss", "font_family": "Consolas", "font_size": 48, "color": "#00FF88"}
         }
         w = widget_manager.create_widget_from_template(template)
         messagebox.showinfo('Добавлено', f"Виджет {w['name']} добавлен и сохранён в конфиге (id: {w['id']}).\nЗапустите приложение под Windows чтобы отобразить виджет.")

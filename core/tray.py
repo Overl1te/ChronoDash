@@ -1,9 +1,10 @@
-import sys, os, threading
 from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem as Item, Menu
 from core.widget_manager import WidgetManager
 from dashboard.dashboard import run_dashboard_window
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
 
 class TrayApp:
     def __init__(self, widget_manager: WidgetManager):
@@ -27,7 +28,7 @@ class TrayApp:
         ]
         return Menu(*items)
 
-    def _menu_my_widgets(self, icon, item):
+    def _menu_my_widgets(self):
         run_dashboard_window(self.wm)
 
     def run(self):
@@ -35,6 +36,18 @@ class TrayApp:
         self.icon = pystray.Icon("DesktopWidgetsPro", self._img, "DesktopWidgetsPro", menu)
         self.icon.run()
 
-    def stop(self, *args):
+    def stop(self):
+        print("Завершение приложения...")
+        
         if self.icon:
             self.icon.stop()
+
+        if hasattr(self.wm, 'widgets'):
+            for widget in self.wm.widgets.values():
+                try:
+                    widget.close()
+                except:
+                    pass
+            self.wm.widgets.clear()
+
+        QTimer.singleShot(100, QApplication.quit)
