@@ -6,7 +6,6 @@ from tkinter import messagebox
 import json
 from PIL import Image, ImageTk
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QTimer
 from core.widget_manager import WidgetManager
 import os
 from core.qt_bridge import get_qt_bridge
@@ -318,13 +317,6 @@ class WidgetsEditor:
 
 def run_widgets_editor(widget_manager):
     def thread_target():
-        import sys
-        from PySide6.QtWidgets import QApplication
-        from PySide6.QtCore import QTimer
-
-        # ← ВАЖНО: создаём Qt-приложение в этом потоке!
-        app = QApplication.instance() or QApplication(sys.argv)
-        QTimer().start(50)  # держим Qt живым
 
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")

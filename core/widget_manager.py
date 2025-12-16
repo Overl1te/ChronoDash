@@ -4,6 +4,7 @@ import uuid
 from pathlib import Path
 from widgets.clock_widget import ClockWidget
 from PySide6.QtCore import Qt as QtCore
+from PySide6.QtCore import QTimer
 
 class WidgetManager:
     def __init__(self, config_path):
@@ -33,31 +34,53 @@ class WidgetManager:
             print("Ошибка сохранения конфига:", e)
 
     def update_widget_config(self, widget_id: str, cfg: dict):
-        for i, c in enumerate(self.config):
+        current_cfg = None
+        i = -1
+        for idx, c in enumerate(self.config):
             if c.get("id") == widget_id:
-                self.config[i] = cfg
+                current_cfg = c
+                i = idx
                 break
-        self._save()
-
-        if widget_id not in self.widgets:
+        
+        if current_cfg is None:
             return
 
-        widget = self.widgets[widget_id]
-        old_cfg = widget.cfg  # старый конфиг у виджета
+        # 1. Определяем, нужно ли пересоздать виджет
+        # (для критических изменений, требующих нового окна)
+        critical_settings = ["opacity", "click_through", "width", "height", "type"]
 
-        # Проверяем, нужно ли пересоздать
-        need_recreate = (
-            cfg.get("click_through", True) != old_cfg.get("click_through", True) or
-            cfg.get("always_on_top", True) != old_cfg.get("always_on_top", True)
-        )
+        recreate_needed = False
+        
+        for setting in critical_settings:
+            # Проверяем, изменилась ли критическая настройка
+            if current_cfg.get(setting) != cfg.get(setting):
+                recreate_needed = True
+                break
 
-        # Применяем обновление
-        widget.update_config(cfg)
+        # 2. Обновляем конфиг в памяти и сохраняем
+        self.config[i] = cfg
+        self._save()
 
-        # Если сменились флаги окна — пересоздаём
-        if need_recreate:
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(0, lambda: self.recreate_widget(widget_id))
+        # 3. Применяем изменения к живому виджету ИЛИ пересоздаем
+        if widget_id in self.widgets:
+            if recreate_needed:
+                # Пересоздание: старый виджет закрывается, новый создается с новыми флагами
+                QTimer.singleShot(0, lambda: self.recreate_widget(widget_id))
+            else:
+                # Обновление: некритические изменения (цвет, формат, позиция)
+                self.widgets[widget_id].update_config(cfg)
+
+    def stop_all_widgets(self):
+        print("Закрытие всех виджетов...")
+        # Закрываем все виджеты
+        for widget in list(self.widgets.values()):
+            widget.close()
+            widget.deleteLater()
+        self.widgets = {}
+        
+        # Очищаем QtBridge
+        from core.qt_bridge import clear_qt_bridge
+        clear_qt_bridge()
 
     def recreate_widget(self, widget_id: str):
         if widget_id in self.widgets:
@@ -75,7 +98,7 @@ class WidgetManager:
             return
 
         if cfg.get("type") == "clock":
-            widget = ClockWidget(cfg)
+            widget = ClockWidget(cfg, is_preview=False)
         else:
             return
 

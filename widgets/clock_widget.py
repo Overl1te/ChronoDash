@@ -4,15 +4,17 @@ from PySide6.QtGui import QPainter, QFont, QColor
 from PySide6.QtCore import Qt, QDateTime, QTimer
 
 class ClockWidget(BaseDesktopWidget):
-    def __init__(self, cfg=None):
-        super().__init__(cfg)
+    # ИЗМЕНЕНИЕ: Принимаем и передаем is_preview
+    def __init__(self, cfg=None, is_preview=False):
+        super().__init__(cfg, is_preview=is_preview) 
         self._apply_content_settings()
 
-        # Запускаем тикалку — безопасно, без постоянного QTimer
-        self._start_clock()
+        if not self.is_preview: 
+            self._start_clock()
 
     def _start_clock(self):
         self.update()  # сразу рисуем
+        # QTimer.singleShot - работает безопасно, так как вызывается только в потоке Qt
         QTimer.singleShot(200, self._start_clock)  # рекурсивно каждые 200 мс
 
     def _apply_content_settings(self):
@@ -26,20 +28,34 @@ class ClockWidget(BaseDesktopWidget):
         self.font_size = int(content.get("font_size", 48))
 
     def update_config(self, new_cfg):
-        # print(f"ClockWidget: обновление конфига")
         self.cfg = new_cfg.copy()
         self._apply_content_settings()
-        super().update_config(new_cfg)  # вызывает resize, move, opacity и т.д.
-        self.update()  # перерисовка
+        super().update_config(new_cfg) 
+        # self.update()  # перерисовка
 
     def draw_widget(self, painter: QPainter):
         try:
-            painter.setPen(self.color)
-            font = QFont(self.font_family, self.font_size)
-            font.setBold(True)
-            painter.setFont(font)
+            # 1. Текущее время
+            current_time = QDateTime.currentDateTime().toString(self.format)
 
-            text = QDateTime.currentDateTime().toString(self.format)
-            painter.drawText(self.rect(), Qt.AlignCenter, text)
+            # 2. Настройки шрифта
+            font = QFont(self.font_family, self.font_size)
+            painter.setFont(font)
+            painter.setPen(self.color)
+
+            # 3. Отрисовка
+            rect = self.rect()
+            
+            # Находим размер текста
+            metrics = painter.fontMetrics()
+            text_rect = metrics.boundingRect(current_time)
+
+            # Вычисляем позицию для центрирования
+            x = (rect.width() - text_rect.width()) / 2
+            y = (rect.height() - text_rect.height()) / 2 + metrics.ascent()
+
+            # Рисуем текст
+            painter.drawText(x, y, current_time)
+
         except Exception as e:
-            print(f"Clock draw error: {e}")
+            pass

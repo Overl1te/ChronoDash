@@ -1,35 +1,9 @@
-import os
-import sys
-import warnings
-import traceback
-
-
-if getattr(sys, 'frozen', False):
-    warnings.filterwarnings("ignore")
-    os.environ["QT_LOGGING_RULES"] = "*.debug=false;*.warning=false;*.critical=false"
-else:
-
-    warnings.filterwarnings("ignore", message=".*QApplication.*main.*thread.*")
-    warnings.filterwarnings("ignore", message=".*created in.*thread.*")
-    warnings.filterwarnings("ignore", category=UserWarning)
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-
-os.environ["QT_LOGGING_RULES"] = "qt.*.debug=false;qt.*.warning=false"
-os.environ["QT_LOGGING_RULES"] = "*=false" 
-
-
-try:
-    from PySide6.QtCore import qInstallMessageHandler
-    def qt_silent_handler(msg_type, context, message):
-        pass 
-    qInstallMessageHandler(qt_silent_handler)
-except:
-    pass
-
 from pathlib import Path
+import sys
+import traceback
 from core.widget_manager import WidgetManager
 from core.tray import TrayApp
+from PySide6.QtWidgets import QApplication
 
 def main():
     try:
@@ -37,9 +11,22 @@ def main():
         docs.mkdir(parents=True, exist_ok=True)
         config_path = docs / "widgets.json"
 
+        # 1. Создание QApplication в главном потоке
+        app = QApplication.instance() or QApplication(sys.argv) 
+        
+        # ОЧЕНЬ ВАЖНО: Отключаем завершение приложения при закрытии последнего виджета
+        # Приложение будет блокировать только pystray.
+        app.setQuitOnLastWindowClosed(False) 
+        
+        # 2. Создание менеджера виджетов
         wm = WidgetManager(config_path)
+        
+        # 3. Создание и запуск трея (БЛОКИРУЕТ ГЛАВНЫЙ ПОТОК)
         tray = TrayApp(wm)
-        tray.run()  # ← Блокирует главный поток — как и должно быть
+        tray.run() # <- Запускает pystray и блокирует главный поток
+
+        # 4. После того как pystray.Icon.run() завершился (нажали "Выход")
+        app.quit()
     except Exception as e:
         print(f"ПИЗДЕЦ: {e}")
         traceback.print_exc()
