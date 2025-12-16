@@ -14,21 +14,19 @@ def main():
         # 1. Создание QApplication в главном потоке
         app = QApplication.instance() or QApplication(sys.argv) 
         
-        # ОЧЕНЬ ВАЖНО: Отключаем завершение приложения при закрытии последнего виджета
-        # Приложение будет блокировать только pystray.
         app.setQuitOnLastWindowClosed(False) 
         
         # 2. Создание менеджера виджетов
         wm = WidgetManager(config_path)
         
-        # 3. Создание и запуск трея (БЛОКИРУЕТ ГЛАВНЫЙ ПОТОК)
+        # 3. Создание и запуск трея
         tray = TrayApp(wm)
-        tray.run() # <- Запускает pystray и блокирует главный поток
+        tray.run()
 
         # 4. После того как pystray.Icon.run() завершился (нажали "Выход")
         app.quit()
     except Exception as e:
-        print(f"ПИЗДЕЦ: {e}")
+        print(f"ERROR: {e}")
         traceback.print_exc()
         input("Нажми Enter чтобы выйти...")
 

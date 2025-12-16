@@ -1,20 +1,19 @@
 # widgets/clock_widget.py
 from widgets.base_widget import BaseDesktopWidget
 from PySide6.QtGui import QPainter, QFont, QColor
-from PySide6.QtCore import Qt, QDateTime, QTimer
+from PySide6.QtCore import QDateTime, QTimer
+
 
 class ClockWidget(BaseDesktopWidget):
-    # ИЗМЕНЕНИЕ: Принимаем и передаем is_preview
     def __init__(self, cfg=None, is_preview=False):
-        super().__init__(cfg, is_preview=is_preview) 
+        super().__init__(cfg, is_preview=is_preview)
         self._apply_content_settings()
 
-        if not self.is_preview: 
+        if not self.is_preview:
             self._start_clock()
 
     def _start_clock(self):
-        self.update()  # сразу рисуем
-        # QTimer.singleShot - работает безопасно, так как вызывается только в потоке Qt
+        self.update()
         QTimer.singleShot(200, self._start_clock)  # рекурсивно каждые 200 мс
 
     def _apply_content_settings(self):
@@ -30,8 +29,7 @@ class ClockWidget(BaseDesktopWidget):
     def update_config(self, new_cfg):
         self.cfg = new_cfg.copy()
         self._apply_content_settings()
-        super().update_config(new_cfg) 
-        # self.update()  # перерисовка
+        super().update_config(new_cfg)
 
     def draw_widget(self, painter: QPainter):
         try:
@@ -45,7 +43,7 @@ class ClockWidget(BaseDesktopWidget):
 
             # 3. Отрисовка
             rect = self.rect()
-            
+
             # Находим размер текста
             metrics = painter.fontMetrics()
             text_rect = metrics.boundingRect(current_time)

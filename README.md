@@ -65,9 +65,10 @@ pip install -r requirements.txt
 
 # Запустить
 python main.py
+```
+
 📋 Требования
 Python 3.8 или выше
-```
 
 ---
 
@@ -87,6 +88,9 @@ Python 3.8 или выше
 - **Позиция: Координаты или привязка к окну**
 
 ### ⌨️ Горячие клавиши
+
+## В БУДУЩЕМ!
+
 <table>
     <tr>
         <th>Действие</th>
@@ -113,19 +117,19 @@ Python 3.8 или выше
 ### Структура проекта
 ```
 ChronoDash/
-├── main.py              # Точка входа
+├── main.py                # Точка входа
 ├── core/
-│   ├── tray.py          # Системный трей
-│   ├── widget_manager.py # Менеджер виджетов
+│   ├── tray.py            # Системный трей
+│   ├── widget_manager.py  # Менеджер виджетов
 │   └── window_attacher.py # Привязка к окнам
 ├── widgets/
-│   ├── base_widget.py   # Базовый класс виджета
-│   ├── clock_widget.py  # Виджет часов
-│   └── weather_widget.py # Виджет погоды (пример)
+│   ├── base_widget.py     # Базовый класс виджета
+│   ├── clock_widget.py    # Виджет часов
+│   └── weather_widget.py  # Виджет погоды (пример)
 ├── dashboard/
-│   └── dashboard.py     # Графический конструктор
+│   └── dashboard.py       # Графический конструктор
 └── config/
-    └── widgets.json     # Конфигурация
+    └── widgets.json       # Конфигурация
 ```	
 	
 ### Создание нового виджета
@@ -158,10 +162,10 @@ if widget_type == "my_widget":
 ### 📦 Сборка проекта
 ```bash
 # Сборка с Nuitka
-python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=pyside6 --enable-plugin=tk-inter --follow-imports --output-dir=build --output-filename=ChronoDash.exe main.py
+python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=pyside6 --enable-plugin=tk-inter --follow-imports --output-dir=build --windows-icon-from-ico=assets/icons/logo.ico --include-data-dir=assets=assets --output-filename=ChronoDash.exe main.py
 
 # Или с PyInstaller
-pyinstaller --name=ChronoDash --onefile --windowed --clean main.py
+pyinstaller --name=ChronoDash --onefile --windowed --icon=assets/icons/logo.ico --add-data "assets;assets" main.py
 ```
 
 ### 📖 API документация
