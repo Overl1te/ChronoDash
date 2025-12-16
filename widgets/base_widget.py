@@ -254,6 +254,31 @@ class BaseDesktopWidget(QWidget):
         painter.drawRect(0, rect.height() - handle_size, handle_size, handle_size)
         painter.drawRect(0, 0, handle_size, handle_size)
 
+    def _draw_edit_overlay(self, painter):
+        rect = self.rect()
+        # Пунктирная рамка
+        pen = QPen(QColor("#0099FF"))
+        pen.setWidth(2)
+        pen.setStyle(Qt.DashLine)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        # Чуть отступаем внутрь, чтобы рамка была видна целиком
+        painter.drawRect(rect.adjusted(1,1,-1,-1))
+
+        # Рисуем "ручки" по углам
+        handle_size = 8
+        painter.setBrush(QColor("#0099FF"))
+        painter.setPen(Qt.NoPen)
+        
+        # Правый нижний
+        painter.drawRect(rect.width() - handle_size, rect.height() - handle_size, handle_size, handle_size)
+        # Правый верхний
+        painter.drawRect(rect.width() - handle_size, 0, handle_size, handle_size)
+        # Левый нижний
+        painter.drawRect(0, rect.height() - handle_size, handle_size, handle_size)
+        # Левый верхний
+        painter.drawRect(0, 0, handle_size, handle_size)
+
     def draw_widget(self, painter: QPainter):
         pass
 

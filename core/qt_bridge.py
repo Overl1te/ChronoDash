@@ -60,7 +60,22 @@ class QtBridge(QObject):
         widget_id = cfg.get("id")
         if not widget_id:
             return
+        # Убедимся, что апдейт не прилетает, если мы редактируем (WM должен его игнорировать)
         self.wm.update_widget_config(widget_id, cfg.copy())
+        
+    def disconnect(self):
+        """Явно отсоединяем все наши сигналы от слотов."""
+        # Отсоединяем update_widget_signal от _handle_update
+        try:
+            self.update_widget_signal.disconnect(self._handle_update)
+        except RuntimeError:
+            pass # Игнорируем, если уже отсоединен
+            
+        # Отсоединяем start_edit_mode_signal от wm.enter_edit_mode
+        try:
+            self.start_edit_mode_signal.disconnect(self.wm.enter_edit_mode)
+        except RuntimeError:
+            pass
 
     def _handle_delete(self, widget_id: str):
         self.wm.delete_widget(widget_id)
