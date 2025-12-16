@@ -1,20 +1,21 @@
 # widgets/clock_widget.py
 from widgets.base_widget import BaseDesktopWidget
 from PySide6.QtGui import QPainter, QFont, QColor
-from PySide6.QtCore import Qt, QDateTime
-
+from PySide6.QtCore import Qt, QDateTime, QTimer
 
 class ClockWidget(BaseDesktopWidget):
     def __init__(self, cfg=None):
         super().__init__(cfg)
-        self._apply_content_settings()  # ← читаем из cfg
+        self._apply_content_settings()
 
-        # Обновляем каждые 200 мс (для секунд)
-        self.timer.stop()
-        self.timer.start(200)
+        # Запускаем тикалку — безопасно, без постоянного QTimer
+        self._start_clock()
+
+    def _start_clock(self):
+        self.update()  # сразу рисуем
+        QTimer.singleShot(200, self._start_clock)  # рекурсивно каждые 200 мс
 
     def _apply_content_settings(self):
-        """Читаем настройки контента из self.cfg"""
         content = self.cfg.get("content", {})
         self.format = content.get("format", "HH:mm:ss")
         self.color = QColor(content.get("color", "#00FF88"))
@@ -25,24 +26,11 @@ class ClockWidget(BaseDesktopWidget):
         self.font_size = int(content.get("font_size", 48))
 
     def update_config(self, new_cfg):
-        print(f"🔄 ClockWidget.update_config() вызван")
-        print(f"   Старый цвет: {getattr(self, 'color', 'НЕТ')}")
-        print(f"   Новый цвет: {new_cfg.get('content', {}).get('color', 'НЕТ')}")
-        
-        # Обновляем конфиг
+        # print(f"ClockWidget: обновление конфига")
         self.cfg = new_cfg.copy()
-        
-        # Применяем настройки содержимого
         self._apply_content_settings()
-        
-        # Применяем настройки окна через родительский метод
-        super().update_config(new_cfg)  # Это обновит размер, позицию, флаги
-        
-        print(f"✅ После обновления цвет: {self.color.name()}")
-        print(f"   Формат: {self.format}")
-        
-        # Форсируем перерисовку
-        self.update()
+        super().update_config(new_cfg)  # вызывает resize, move, opacity и т.д.
+        self.update()  # перерисовка
 
     def draw_widget(self, painter: QPainter):
         try:
@@ -51,9 +39,7 @@ class ClockWidget(BaseDesktopWidget):
             font.setBold(True)
             painter.setFont(font)
 
-            current_time = QDateTime.currentDateTime()
-            text = current_time.toString(self.format)
-
+            text = QDateTime.currentDateTime().toString(self.format)
             painter.drawText(self.rect(), Qt.AlignCenter, text)
         except Exception as e:
             print(f"Clock draw error: {e}")

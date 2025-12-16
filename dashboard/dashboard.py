@@ -30,13 +30,13 @@ class WidgetPreview(ctk.CTkCanvas):
         # Убедимся что QApplication существует
         app = QApplication.instance()
         if not app:
-            print("⚠️ Нет QApplication для рендеринга превью")
+            # print("⚠️ Нет QApplication для рендеринга превью")
             return
 
         pixmap = BaseDesktopWidget.render_to_pixmap(cfg)
         
         if pixmap.isNull():
-            print("⚠️ Не удалось создать pixmap для превью")
+            # print("⚠️ Не удалось создать pixmap для превью")
             return
 
         # Конвертируем в PhotoImage
@@ -192,7 +192,8 @@ class WidgetsEditor:
         if not sel:
             return
         idx = sel[0]
-        self.current_cfg = self.wm.config[idx]
+        import copy
+        self.current_cfg = copy.deepcopy(self.wm.config[idx])
         self.load_cfg_to_ui(self.current_cfg)
 
     def load_cfg_to_ui(self, cfg):
@@ -238,22 +239,22 @@ class WidgetsEditor:
         if not self.current_cfg:
             return
 
-        print(f"📝 Изменение {key} = {value}")
+        # print(f"📝 Изменение {key} = {value}")
         self.current_cfg[key] = value
         widget_id = self.current_cfg["id"]
         
         # Сохраняем на диск
-        self.wm.save_config()
+        self.wm._save()
         
         # ОБНОВЛЯЕМ ЧЕРЕЗ МОСТ (сигнал Qt)
         if self.qt_bridge:
-            print(f"📡 Отправляем сигнал в Qt поток")
+            # print(f"📡 Отправляем сигнал в Qt поток")
             # Создаем копию конфига
             config_copy = self.current_cfg.copy()
             # Отправляем сигнал в главный Qt поток
             self.qt_bridge.update_widget_signal.emit(config_copy)
         else:
-            print(f"⚠️ Qt мост не доступен, обновляем напрямую")
+            # print(f"⚠️ Qt мост не доступен, обновляем напрямую")
             if widget_id in self.wm.widgets:
                 self.wm.update_widget_config(widget_id, self.current_cfg.copy())
 
@@ -263,7 +264,7 @@ class WidgetsEditor:
         if not self.current_cfg:
             return
 
-        print(f"📝 Изменение {'.'.join(path)} = {value}")
+        # print(f"📝 Изменение {'.'.join(path)} = {value}")
         
         d = self.current_cfg
         for p in path[:-1]:
@@ -279,7 +280,7 @@ class WidgetsEditor:
         
         # ОБНОВЛЯЕМ ЧЕРЕЗ МОСТ
         if self.qt_bridge:
-            print(f"📡 Отправляем сигнал в Qt поток")
+            # print(f"📡 Отправляем сигнал в Qt поток")
             config_copy = self.current_cfg.copy()
             self.qt_bridge.update_widget_signal.emit(config_copy)
         else:
@@ -317,28 +318,24 @@ class WidgetsEditor:
 
 def run_widgets_editor(widget_manager):
     def thread_target():
-        # Создаём полностью независимый root в этом потоке
+        import sys
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtCore import QTimer
+
+        # ← ВАЖНО: создаём Qt-приложение в этом потоке!
+        app = QApplication.instance() or QApplication(sys.argv)
+        QTimer().start(50)  # держим Qt живым
+
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        # ВАЖНО: создаём НОВЫЙ Tk(), а не CTkToplevel
-        root = ctk.CTk()  # ← это и есть Tk() под капотом
-        root.title("Мои виджеты — ChronoDash")
+        root = ctk.CTk()
+        root.title("ChronoDash — Настройки")
         root.geometry("1100x700")
         root.minsize(1000, 600)
-        root.protocol("WM_DELETE_WINDOW", root.quit)  # чтобы корректно закрывалось
 
-        # Передаём управление нашему классу, но с уже готовым root
         editor = WidgetsEditor(widget_manager, preexisting_root=root)
-        
-        # Запускаем свой собственный mainloop
         root.mainloop()
         
-        # После закрытия окна — чистим за собой
-        try:
-            root.destroy()
-        except:
-            pass
-
     # Запускаем в отдельном потоке — теперь всё легально
     threading.Thread(target=thread_target, daemon=True).start()

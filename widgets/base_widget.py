@@ -1,28 +1,27 @@
 # widgets/base_widget.py
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QPainter, QPixmap
-from PySide6.QtCore import Qt, QTimer, QMetaObject
-from streamlit import json
-
+from PySide6.QtCore import Qt
 
 class BaseDesktopWidget(QWidget):
     def __init__(self, cfg=None):
         super().__init__()
         self.cfg = cfg or {}
-        print(f"🧩 Создается виджет с cfg: {self.cfg.get('id', 'no-id')}")
-        
+        # print(f"Создается виджет: {self.cfg.get('id', 'no-id')}")
+
         self._apply_flags()
-        
+        self._apply_opacity()  # если добавил из прошлого ответа
+
         self.resize(max(self.cfg.get("width", 320), 10),
                     max(self.cfg.get("height", 180), 10))
         self.move(self.cfg.get("x", 100), self.cfg.get("y", 100))
 
-        # Таймер обновления
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update)
-        self.timer.start(1000)
-
         self.drag_pos = None
+
+        # УДАЛЯЕМ ВСЁ ЭТО:
+        # self.timer = QTimer(self)
+        # self.timer.timeout.connect(self.update)
+        # self.timer.start(1000)
 
     @staticmethod
     def render_to_pixmap(cfg: dict) -> QPixmap:
@@ -49,40 +48,28 @@ class BaseDesktopWidget(QWidget):
         painter.end()
         return pixmap
 
-    def _apply_flags(self):
-        """Применяет флаги окна на основе cfg"""
-        flags = Qt.FramelessWindowHint | Qt.Tool
+    def _apply_opacity(self):
+        opacity = self.cfg.get("opacity", 255) / 255.0
+        self.setWindowOpacity(opacity)
 
+    def _apply_flags(self):
+        flags = Qt.FramelessWindowHint | Qt.Tool
         if self.cfg.get("always_on_top", True):
             flags |= Qt.WindowStaysOnTopHint
-
         if self.cfg.get("click_through", True):
             flags |= Qt.WindowTransparentForInput
 
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, 
-                         self.cfg.get("click_through", True))
-
-        # Показываем окно если оно было видимым
-        if hasattr(self, 'isVisible') and self.isVisible():
-            self.show()
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, self.cfg.get("click_through", True))
 
     def update_config(self, new_cfg):
-        """Обновляет конфигурацию виджета"""
-        print(f"🔄 BaseDesktopWidget.update_config() вызван для {self.cfg.get('id', 'unknown')}")
         self.cfg = new_cfg.copy()
-        
-        # Обновляем флаги окна
         self._apply_flags()
-        
-        # Обновляем размер и позицию
+        self._apply_opacity()
         self.resize(max(self.cfg.get("width", 320), 10),
                     max(self.cfg.get("height", 180), 10))
         self.move(self.cfg.get("x", 100), self.cfg.get("y", 100))
-        
-        # Форсируем перерисовку
         self.update()
 
     def paintEvent(self, event):

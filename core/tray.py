@@ -1,57 +1,45 @@
-# tray.py — РАБОТАЕТ ПО ТВОЕЙ ЛОГИКЕ НА 100%
+# core/tray.py
 from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem as Item, Menu
-from core.widget_manager import WidgetManager
 from dashboard.dashboard import run_widgets_editor
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QTimer
-import threading
-
+from core.qt_worker import QtWorker
 
 class TrayApp:
-    def __init__(self, widget_manager: WidgetManager):
+    def __init__(self, widget_manager):
         self.wm = widget_manager
+        self.qt_worker = QtWorker(widget_manager)
         self.icon = None
-        self._create_icon_image()
+        self._create_icon()
 
-    def _create_icon_image(self):
+    def _create_icon(self):
         img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
-        d.ellipse((8, 8, 56, 56), fill=(10, 120, 200, 255))
-        d.rectangle((18, 28, 46, 36), fill=(255, 255, 255, 255))
-        self._img = img
+        d.ellipse((8, 8, 56, 56), fill=(10, 120, 200))
+        d.rectangle((18, 28, 46, 36), fill="white")
+        self.img = img
 
-    def _build_menu(self):
+    def _menu(self):
         return Menu(
-            Item("Мои виджеты", lambda: self._safe_open_editor()),
+            Item("Показать виджеты", lambda: self.qt_worker.start()),
+            Item("Перезапустить виджеты", self._restart_qt),
+            Item("Настройки", lambda: run_widgets_editor(self.wm)),
             Item("Выход", self.stop),
         )
 
-    def _safe_open_editor(self):
-        """Открывает редактор БЕЗ КОНФЛИКТА С pystray"""
-        QTimer.singleShot(50, lambda: run_widgets_editor(self.wm))
+    def _restart_qt(self):
+        print("Перезапуск виджетов...")
+        self.qt_worker.stop()
+        import time; time.sleep(0.5)
+        self.qt_worker.start()
 
     def run(self):
-        menu = self._build_menu()
-        self.icon = pystray.Icon("ChronoDash", self._img, "ChronoDash", menu)
-        
-        # ГЛАВНЫЙ ПОТОК — ТОЛЬКО ТРЕЙ, НИЧЕГО БОЛЬШЕ!
+        self.qt_worker.start()  # Автозапуск при старте
+        self.icon = pystray.Icon("ChronoDash", self.img, "ChronoDash", self._menu())
         self.icon.run()
 
     def stop(self):
-        print("Завершение приложения...")
-
+        print("Выход из приложения...")
+        self.qt_worker.stop()
         if self.icon:
             self.icon.stop()
-
-        # Закрываем все виджеты
-        for widget in getattr(self.wm, "widgets", {}).values():
-            try:
-                widget.close()
-            except:
-                pass
-        self.wm.widgets.clear()
-
-        # Важно: даём Qt завершить работу через очередь
-        QTimer.singleShot(100, QApplication.quit)
