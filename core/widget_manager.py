@@ -5,6 +5,7 @@ from pathlib import Path
 from widgets.clock_widget import ClockWidget
 from PySide6.QtCore import Qt as QtCore
 from PySide6.QtCore import QTimer
+from core.edit_overlay import EditOverlay
 
 class WidgetManager:
     def __init__(self, config_path):
@@ -12,8 +13,11 @@ class WidgetManager:
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.widgets = {}
         self.config = []
+        self.overlay = None # Ссылка на оверлей
+        self.editing_widget_id = None
         self._load()
 
+    # ... (методы _load, _save, update_widget_config без изменений) ...
     def _load(self):
         if not self.config_path.exists():
             self.config = []
@@ -24,7 +28,6 @@ class WidgetManager:
                 self.config = json.load(f)
         except:
             self.config = []
-        # print(f"Загружено {len(self.config)} виджетов")
 
     def _save(self):
         try:
@@ -34,6 +37,11 @@ class WidgetManager:
             print("Ошибка сохранения конфига:", e)
 
     def update_widget_config(self, widget_id: str, cfg: dict):
+        # Если мы в режиме редактора для этого виджета, игнорируем обновление позиции извне,
+        # чтобы не было конфликта с drag-n-drop
+        if self.editing_widget_id == widget_id:
+            return 
+            
         current_cfg = None
         i = -1
         for idx, c in enumerate(self.config):
@@ -42,43 +50,107 @@ class WidgetManager:
                 i = idx
                 break
         
-        if current_cfg is None:
-            return
+        if current_cfg is None: return
 
-        # 1. Определяем, нужно ли пересоздать виджет
-        # (для критических изменений, требующих нового окна)
-        critical_settings = ["opacity", "click_through", "width", "height", "type"]
-
+        critical_settings = ["opacity", "click_through", "type"] # убрал width/height из критичных для мягкости
         recreate_needed = False
-        
         for setting in critical_settings:
-            # Проверяем, изменилась ли критическая настройка
             if current_cfg.get(setting) != cfg.get(setting):
                 recreate_needed = True
                 break
 
-        # 2. Обновляем конфиг в памяти и сохраняем
         self.config[i] = cfg
         self._save()
 
-        # 3. Применяем изменения к живому виджету ИЛИ пересоздаем
         if widget_id in self.widgets:
             if recreate_needed:
-                # Пересоздание: старый виджет закрывается, новый создается с новыми флагами
                 QTimer.singleShot(0, lambda: self.recreate_widget(widget_id))
             else:
-                # Обновление: некритические изменения (цвет, формат, позиция)
                 self.widgets[widget_id].update_config(cfg)
+
+    # --- ЛОГИКА РЕДАКТОРА ---
+    def enter_edit_mode(self, widget_id):
+        if widget_id not in self.widgets:
+            return
+        
+        print(f"Вход в режим редактора: {widget_id}")
+        
+        if self.editing_widget_id and self.editing_widget_id != widget_id:
+            self.exit_edit_mode()
+
+        self.editing_widget_id = widget_id
+        
+        # 1. Сначала создаем и показываем оверлей
+        if self.overlay:
+            self.overlay.close()
+            
+        from core.edit_overlay import EditOverlay # Импорт тут, чтобы избежать циклической зависимости
+        self.overlay = EditOverlay()
+        self.overlay.stop_edit_signal.connect(self.exit_edit_mode)
+        
+        # 2. Теперь переводим виджет в режим редактора
+        widget = self.widgets[widget_id]
+        widget.set_edit_mode(True)
+        
+        # 3. Виджет должен быть над оверлеем
+        # Поскольку у обоих WindowStaysOnTopHint, последний show() или raise_() выигрывает.
+        # Мы подняли оверлей в его __init__ (raise_), чтобы он был над всем.
+        # Теперь поднимаем виджет над оверлеем.
+        widget.raise_()
+        widget.activateWindow() # Дадим ему фокус, чтобы он мог ловить мышь
+        
+        # 4. Передадим фокус обратно оверлею для ESC (но это может быть нестабильно)
+        # self.overlay.activateWindow() 
+        # Вместо этого мы используем grabKeyboard() в EditOverlay
+
+    def exit_edit_mode(self):
+        if not self.editing_widget_id:
+            # Если оверлей закрылся по клику, но мы уже не в режиме, просто чистим оверлей
+            if self.overlay:
+                self.overlay.close()
+                self.overlay = None
+            return
+            
+        print("Выход из режима редактора...")
+        widget_id = self.editing_widget_id
+        
+        if widget_id in self.widgets:
+            widget = self.widgets[widget_id]
+            widget.set_edit_mode(False) # Выходим из режима, возвращаем старые флаги
+            
+            # Сохраняем новые координаты
+            new_geo = widget.geometry()
+            
+            for c in self.config:
+                if c["id"] == widget_id:
+                    c["x"] = new_geo.x()
+                    c["y"] = new_geo.y()
+                    c["width"] = new_geo.width()
+                    c["height"] = new_geo.height()
+                    break
+            
+            self._save()
+            print("Координаты сохранены.")
+
+        # Закрываем оверлей только ПОСЛЕ сохранения и возврата виджета
+        if self.overlay:
+            try:
+                self.overlay.releaseKeyboard() # Освобождаем клавиатуру
+            except:
+                pass # Может быть ошибка, если он уже закрыт
+                
+            self.overlay.close()
+            self.overlay = None
+            
+        self.editing_widget_id = None
 
     def stop_all_widgets(self):
         print("Закрытие всех виджетов...")
-        # Закрываем все виджеты
+        if self.overlay: self.overlay.close() # Закрываем оверлей если есть
         for widget in list(self.widgets.values()):
             widget.close()
             widget.deleteLater()
         self.widgets = {}
-        
-        # Очищаем QtBridge
         from core.qt_bridge import clear_qt_bridge
         clear_qt_bridge()
 
@@ -87,24 +159,17 @@ class WidgetManager:
             old = self.widgets.pop(widget_id)
             old.close()
             old.deleteLater()
-
         cfg = next((c for c in self.config if c.get("id") == widget_id), None)
-        if cfg:
-            self._create_widget_instance(cfg.copy())
+        if cfg: self._create_widget_instance(cfg.copy())
 
     def _create_widget_instance(self, cfg: dict):
         widget_id = cfg["id"]
-        if widget_id in self.widgets:
-            return
-
+        if widget_id in self.widgets: return
         if cfg.get("type") == "clock":
             widget = ClockWidget(cfg, is_preview=False)
-        else:
-            return
-
+        else: return
         widget.show()
         self.widgets[widget_id] = widget
-        # print(f"Создан виджет: {cfg.get('name', widget_id)}")
 
     def load_and_create_all_widgets(self):
         for cfg in self.config:
