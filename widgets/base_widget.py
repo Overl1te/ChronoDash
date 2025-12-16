@@ -263,15 +263,20 @@ class BaseDesktopWidget(QWidget):
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
         # Чуть отступаем внутрь, чтобы рамка была видна целиком
-        painter.drawRect(rect.adjusted(1,1,-1,-1))
+        painter.drawRect(rect.adjusted(1, 1, -1, -1))
 
         # Рисуем "ручки" по углам
         handle_size = 8
         painter.setBrush(QColor("#0099FF"))
         painter.setPen(Qt.NoPen)
-        
+
         # Правый нижний
-        painter.drawRect(rect.width() - handle_size, rect.height() - handle_size, handle_size, handle_size)
+        painter.drawRect(
+            rect.width() - handle_size,
+            rect.height() - handle_size,
+            handle_size,
+            handle_size,
+        )
         # Правый верхний
         painter.drawRect(rect.width() - handle_size, 0, handle_size, handle_size)
         # Левый нижний

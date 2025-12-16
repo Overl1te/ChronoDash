@@ -380,7 +380,9 @@ class WidgetsEditor(ctk.CTkFrame):
         """Скрывает или показывает поля ввода координат"""
         if self.show_coords_var.get():
             # Показываем фрейм с координатами
-            self.coords_frame.pack(fill="x", after=self.coords_frame.master.winfo_children()[2])
+            self.coords_frame.pack(
+                fill="x", after=self.coords_frame.master.winfo_children()[2]
+            )
         else:
             # Скрываем
             self.coords_frame.pack_forget()
@@ -390,20 +392,21 @@ class WidgetsEditor(ctk.CTkFrame):
         if not self.current_cfg:
             messagebox.showwarning("Внимание", "Сначала выберите виджет из списка!")
             return
-        
+
         widget_id = self.current_cfg["id"]
-        
+
         if self.qt_bridge:
             # Отправляем сигнал в поток Qt
             # Это вызовет wm.enter_edit_mode(widget_id)
             try:
                 self.qt_bridge.start_edit_mode_signal.emit(widget_id)
             except AttributeError:
-                 messagebox.showerror("Ошибка", "Сигнал start_edit_mode_signal не найден в QtBridge.\nОбновите qt_bridge.py!")
+                messagebox.showerror(
+                    "Ошибка",
+                    "Сигнал start_edit_mode_signal не найден в QtBridge.\nОбновите qt_bridge.py!",
+                )
         else:
             messagebox.showerror("Ошибка", "Связь с графическим ядром (Qt) потеряна.")
-
-    # -----------------------------------------------
 
     def add_new_clock(self):
         new_cfg = {
@@ -609,7 +612,6 @@ class WidgetsEditor(ctk.CTkFrame):
             config_copy = self.current_cfg.copy()
             self.qt_bridge.update_widget_signal.emit(config_copy)
 
-        # 3. Обновляем превью
         self.preview.update_preview(self.current_cfg)
 
     def on_attach_toggle(self):
