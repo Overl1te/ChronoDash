@@ -212,3 +212,8 @@ __marimo__/
 task.MD
 start.bat
 *.log
+logs/
+log.py
+config/
+ChronoDash
+TERMS_OF_USE

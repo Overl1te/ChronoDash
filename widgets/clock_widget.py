@@ -14,86 +14,103 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+"""
+Виджет цифровых часов.
+
+Отображает текущее время в заданном формате.
+Поддерживает настройку шрифта, размера, цвета и формата времени.
+Обновляется автоматически каждую секунду (или чаще, если нужны миллисекунды).
+"""
+
 from widgets.base_widget import BaseDesktopWidget
 from PySide6.QtGui import QPainter, QFont, QColor
 from PySide6.QtCore import QDateTime, QTimer, Qt
 
+
 class ClockWidget(BaseDesktopWidget):
+    """
+    Виджет, отображающий цифровые часы на рабочем столе.
+    Наследуется от BaseDesktopWidget и реализует отрисовку времени.
+    """
     def __init__(self, cfg=None, is_preview=False):
         super().__init__(cfg, is_preview=is_preview)
-        
-        # Применяем настройки
+
+        # Применяем настройки контента из конфига
         self._apply_content_settings()
 
-        # Запускаем таймер только если это реальный виджет, а не превью
+        # Запускаем таймер обновления только для реального виджета (не для превью)
         if not self.is_preview:
             self._start_clock()
 
     def _start_clock(self):
-        """Обновляет виджет раз в секунду (или чаще, если нужны миллисекунды)"""
-        self.update()
-        # Рекурсивный запуск таймера. 
-        # Если в формате есть миллисекунды, можно уменьшить интервал.
+        """
+        Запускает рекурсивный таймер для обновления времени.
+
+        Интервал зависит от формата: 100 мс если есть миллисекунды, иначе 1000 мс.
+        """
+        self.update()  # Немедленное обновление
+
         interval = 100 if ".z" in self.format else 1000
         QTimer.singleShot(interval, self._start_clock)
 
     def _apply_content_settings(self):
-        """Парсит настройки из self.cfg во внутренние переменные"""
+        """Извлекает и применяет настройки контента из конфига."""
         content = self.cfg.get("content", {})
-        
+
         self.format = content.get("format", "HH:mm:ss")
         self.font_family = content.get("font_family", "Consolas")
         self.font_size = int(content.get("font_size", 48))
-        
+
         col_str = content.get("color", "#00FF88")
         self.color = QColor(col_str)
         if not self.color.isValid():
             self.color = QColor("#00FF88")
 
     def update_config(self, new_cfg):
-        """Переопределяем обновление конфига, чтобы перечитать настройки контента"""
+        """
+        Переопределяет обновление конфига — перечитывает настройки контента и обновляет отрисовку.
+        """
         super().update_config(new_cfg)
         self._apply_content_settings()
         self.update()
 
     def draw_widget(self, painter: QPainter):
-        """Отрисовка часов"""
+        """
+        Отрисовывает текущее время по центру виджета.
+
+        Использует заданный шрифт, размер и цвет.
+        """
         try:
-            # 1. Получаем время
             current_time = QDateTime.currentDateTime().toString(self.format)
 
-            # 2. Настраиваем шрифт
             font = QFont(self.font_family, self.font_size)
-            # Включаем сглаживание шрифтов для красоты
             font.setStyleStrategy(QFont.PreferAntialias)
-            
+
             painter.setFont(font)
             painter.setPen(self.color)
 
-            # 3. Рисуем текст по центру прямоугольника виджета
-            # Qt.AlignCenter делает всю математику центрирования за нас
             painter.drawText(self.rect(), Qt.AlignCenter, current_time)
-
         except Exception as e:
             print(f"Ошибка отрисовки часов: {e}")
 
 
 # ==============================================================================
-# 2. ДЕФОЛТНАЯ КОНФИГУРАЦИЯ
+# Дефолтная конфигурация виджета
 # ==============================================================================
 def get_default_config():
-    """Возвращает настройки для создания нового виджета этого типа"""
+    """
+    Возвращает дефолтную конфигурацию для нового экземпляра часов.
+
+    Используется при создании виджета через дашборд.
+    """
     return {
         "type": "clock",
         "name": "Часы",
-        # Базовые размеры
         "width": 350,
         "height": 150,
-        # Базовые флаги
         "opacity": 1.0,
         "click_through": True,
         "always_on_top": True,
-        # Специфичные настройки контента
         "content": {
             "format": "HH:mm:ss",
             "color": "#00FF88",
@@ -105,81 +122,63 @@ def get_default_config():
 
 
 # ==============================================================================
-# 3. ИНТЕРФЕЙС РЕДАКТОРА (CUSTOMTKINTER)
+# UI настроек в дашборде (CustomTkinter)
 # ==============================================================================
 def render_settings_ui(parent, cfg, on_update):
     """
-    Рисует настройки, специфичные для часов, внутри parent (CTkFrame).
-    
+    Отрисовывает специфичные настройки часов во фрейме дашборда.
+
     Args:
-        parent: Родительский фрейм из dashboard.py
-        cfg: Текущий словарь настроек виджета
-        on_update: Функция callback(path, value), которую надо вызывать при изменении.
-                   Например: on_update("content.color", "#FF0000")
+        parent: Родительский фрейм (CTkFrame из дашборда)
+        cfg: Текущий конфиг виджета
+        on_update: Callback для обновления вложенных параметров (path, value)
     """
-    # Импортируем внутри функции, чтобы Qt-поток (где этот файл тоже грузится)
-    # не тянул за собой тяжелый tkinter.
-    import customtkinter as ctk 
+    import customtkinter as ctk
     import tkinter as tk
 
     content = cfg.get("content", {})
 
-    # --- Поле: Формат времени ---
+    # Формат времени
     ctk.CTkLabel(parent, text="Формат времени (Python strftime):", text_color="gray").pack(anchor="w", pady=(10, 0))
-    
     fmt_entry = ctk.CTkEntry(parent, placeholder_text="Например: HH:mm:ss")
     fmt_entry.pack(fill="x", pady=5)
     fmt_entry.insert(0, content.get("format", "HH:mm:ss"))
-    
-    def _on_fmt_change(event):
-        on_update("content.format", fmt_entry.get())
-    
-    fmt_entry.bind("<KeyRelease>", _on_fmt_change)
-    
-    # --- Поле: Цвет ---
+    fmt_entry.bind("<KeyRelease>", lambda event: on_update("content.format", fmt_entry.get()))
+
+    # Цвет текста
     ctk.CTkLabel(parent, text="Цвет текста (HEX):", text_color="gray").pack(anchor="w", pady=(10, 0))
-    
     col_entry = ctk.CTkEntry(parent, placeholder_text="#RRGGBB")
     col_entry.pack(fill="x", pady=5)
     col_entry.insert(0, content.get("color", "#00FF88"))
-    
-    def _on_col_change(event):
-        on_update("content.color", col_entry.get())
-        
-    col_entry.bind("<KeyRelease>", _on_col_change)
+    col_entry.bind("<KeyRelease>", lambda event: on_update("content.color", col_entry.get()))
 
-    # --- Поле: Размер шрифта ---
+    # Размер шрифта
     ctk.CTkLabel(parent, text="Размер шрифта:", text_color="gray").pack(anchor="w", pady=(10, 0))
-    
-    # Контейнер для слайдера и подписи значения
     size_frame = ctk.CTkFrame(parent, fg_color="transparent")
     size_frame.pack(fill="x", pady=5)
-    
+
     size_lbl = ctk.CTkLabel(size_frame, text=str(content.get("font_size", 48)), width=30)
     size_lbl.pack(side="right")
-    
+
     slider = ctk.CTkSlider(size_frame, from_=10, to=200, number_of_steps=190)
     slider.pack(side="left", fill="x", expand=True, padx=(0, 10))
     slider.set(content.get("font_size", 48))
-    
+
     def _on_size_drag(val):
         val_int = int(val)
         size_lbl.configure(text=str(val_int))
         on_update("content.font_size", val_int)
-        
+
     slider.configure(command=_on_size_drag)
-    
-    # --- Поле: Шрифт (Семейство) ---
+
+    # Семейство шрифта
     ctk.CTkLabel(parent, text="Шрифт (Family):", text_color="gray").pack(anchor="w", pady=(10, 0))
     font_entry = ctk.CTkEntry(parent)
     font_entry.pack(fill="x", pady=5)
     font_entry.insert(0, content.get("font_family", "Segoe UI"))
-    
-    def _on_font_change(event):
-        on_update("content.font_family", font_entry.get())
-        
-    font_entry.bind("<KeyRelease>", _on_font_change)
+    font_entry.bind("<KeyRelease>", lambda event: on_update("content.font_family", font_entry.get()))
 
+    # Глобальные флаги (поверх всех, клик насквозь)
     always_top_var = tk.BooleanVar(value=cfg.get("always_on_top", False))
     ctk.CTkCheckBox(parent, text="Поверх всех окон", variable=always_top_var,
                     command=lambda: on_update("always_on_top", always_top_var.get())).pack(anchor="w", padx=20, pady=5)
@@ -190,7 +189,6 @@ def render_settings_ui(parent, cfg, on_update):
 
 
 # ==============================================================================
-# 4. ЭКСПОРТ КЛАССА
+# Экспорт класса для реестра
 # ==============================================================================
-# Эта переменная нужна WidgetManager'у, чтобы создать экземпляр без if/else
 WidgetClass = ClockWidget

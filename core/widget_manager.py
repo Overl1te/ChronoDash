@@ -14,62 +14,86 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+"""
+Центральный менеджер всех десктоп-виджетов.
+
+Загружает/сохраняет конфиг, создаёт/удаляет/обновляет виджеты,
+управляет режимом редактирования (оверлей + захват клавиатуры),
+пересоздаёт виджеты при необходимости.
+Все операции с виджетами происходят только в главном Qt-потоке.
+"""
+
 import json
-import uuid
 from pathlib import Path
-from PySide6.QtCore import Qt as QtCore
+import uuid
 from PySide6.QtCore import QTimer
 from core.edit_overlay import EditOverlay
 from core.registry import get_module
+from core.qt_bridge import clear_qt_bridge
 
 
 class WidgetManager:
-    def __init__(self, config_path):
+    """
+    Управляет жизненным циклом всех виджетов, конфигурацией и режимом редактирования.
+    """
+
+    def __init__(self, config_path: str | Path):
         self.config_path = Path(config_path)
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        self.widgets = {}
-        self.config = []
-        self.overlay = None
-        self.editing_widget_id = None
+
+        self.widgets = {}               # widget_id → экземпляр BaseDesktopWidget
+        self.config = []                # список всех конфигов (сохраняется в json)
+        self.overlay = None             # текущий EditOverlay (только один одновременно)
+        self.editing_widget_id = None   # id виджета, который сейчас редактируется
+
         self._load()
 
-    def get_all_configs(self) -> list:
-        """
-        Возвращает копию всего списка конфигураций виджетов.
-        Используется Dashboard для отображения списка.
-        """
-        # self.config - это список, который хранит конфиги всех виджетов
+    def get_all_configs(self) -> list[dict]:
+        """Возвращает копию списка всех конфигураций для отображения в дашборде."""
         return self.config.copy()
 
     def _load(self):
+        """Загружает конфигурацию из файла или создаёт пустую."""
         if not self.config_path.exists():
             self.config = []
             self._save()
             return
+
         try:
             with open(self.config_path, encoding="utf-8") as f:
                 self.config = json.load(f)
-        except:
-            self.config = []
+        except Exception:
+            self.config = []  # повреждённый файл → начинаем с чистого листа
 
     def _save(self):
+        """Сохраняет текущий список конфигов в файл."""
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print("Ошибка сохранения конфига:", e)
+            print(f"Ошибка сохранения конфигурации: {e}")
+
+    # ──────────────────────────────────────────────────────────────
+    # Обновление конфигурации (без пересоздания, если возможно)
+    # ──────────────────────────────────────────────────────────────
 
     def update_widget_config(self, widget_id: str, cfg: dict):
+        """
+        Обновляет конфиг виджета в памяти и на диске.
+        Если виджет не в режиме редактирования — сразу применяет изменения.
+        """
         if self.editing_widget_id == widget_id:
-            return
+            return  # во время редактирования обновляем только после выхода
 
-        # Просто обновляем конфиг
+        # Обновляем в списке конфигов
         for i, c in enumerate(self.config):
             if c.get("id") == widget_id:
                 self.config[i] = cfg.copy()
                 break
+
         self._save()
 
+        # Применяем к живому виджету
         if widget_id in self.widgets:
             print(f"[MANAGER] Обновляем виджет {widget_id} без пересоздания")
             self.widgets[widget_id].update_config(cfg.copy())
@@ -86,19 +110,18 @@ class WidgetManager:
     def enter_edit_mode(self, widget_id):
         if widget_id not in self.widgets:
             return
+
         self.editing_widget_id = widget_id
         widget = self.widgets[widget_id]
 
         if not self.overlay:
-            self.overlay = EditOverlay(widget)  # Передаём ссылку на виджет
+            self.overlay = EditOverlay(widget)
             self.overlay.stop_edit_signal.connect(self.exit_edit_mode)
-        
+
         self.overlay.show()
-        
-        # Включаем режим редактирования
         widget.set_edit_mode(True)
 
-        # Оверлей захватывает клавиатуру для ESC
+        # Оверлей захватывает ESC
         self.overlay.grabKeyboard()
         
         QTimer.singleShot(50, lambda w=widget: (w.raise_(), w.activateWindow()))
@@ -110,16 +133,15 @@ class WidgetManager:
         widget.activateWindow()
 
     def exit_edit_mode(self):
+        """Выходит из режима редактирования, сохраняет геометрию."""
         if not self.editing_widget_id:
-            print("[EDIT] Выход из edit mode: уже не в режиме")
             if self.overlay:
-                print("[EDIT] Закрываем висящий оверлей")
                 self.overlay.close()
                 self.overlay = None
             return
 
         widget_id = self.editing_widget_id
-        print(f"[EDIT] === ВЫХОД ИЗ РЕЖИМА РЕДАКТИРОВАНИЯ === Виджет ID: {widget_id}")
+        widget = self.widgets.get(widget_id)
 
         if widget_id in self.widgets:
             widget = self.widgets[widget_id]
@@ -141,7 +163,6 @@ class WidgetManager:
 
         # Закрываем оверлей
         if self.overlay:
-            print("[EDIT] Закрываем EditOverlay")
             try:
                 self.overlay.releaseKeyboard()
             except:
@@ -150,7 +171,6 @@ class WidgetManager:
             self.overlay = None
 
         self.editing_widget_id = None
-        print("[EDIT] Режим редактирования завершён")
 
     # --- ЛОГИКА РЕДАКТОРА ---
     def enter_edit_mode(self, widget_id):
@@ -230,6 +250,7 @@ class WidgetManager:
         clear_qt_bridge()
 
     def recreate_widget(self, widget_id: str):
+        """Полностью пересоздаёт виджет (например, после смены типа)."""
         if widget_id in self.widgets:
             old = self.widgets.pop(widget_id)
             old.close()
@@ -237,10 +258,9 @@ class WidgetManager:
         cfg = next((c for c in self.config if c.get("id") == widget_id), None)
         if cfg:
             self._create_widget_instance(cfg.copy())
-            # Поднимаем новый виджет сразу
             QTimer.singleShot(50, lambda: self._raise_widget_if_exists(widget_id))
 
-    def _raise_widget_if_exists(self, widget_id):
+    def _raise_widget_if_exists(self, widget_id: str):
         if widget_id in self.widgets:
             w = self.widgets[widget_id]
             if w.isVisible():

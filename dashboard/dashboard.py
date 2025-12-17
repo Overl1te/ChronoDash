@@ -20,16 +20,11 @@ import threading
 import tkinter as tk
 from tkinter import messagebox
 import json
-from PIL import Image, ImageTk
 from core.registry import MODULES, get_default_config, get_module
-from PySide6.QtWidgets import QApplication
 from core.widget_manager import WidgetManager
 import os
 from core.qt_bridge import get_qt_bridge
 from core.registry import get_module
-import io
-
-from widgets.base_widget import BaseDesktopWidget
 
 # Отключаем лишний шум в консоли от Qt
 os.environ["QT_LOGGING_RULES"] = "qt5ct.debug=false"
@@ -237,8 +232,6 @@ class WidgetsEditor(ctk.CTkFrame):
         # === Вкладка: Контент (Специфические настройки) ===
         # ----------------------------------------------------------------------
         
-        # ГЛАВНЫЙ КОНТЕЙНЕР ДЛЯ ДИНАМИЧЕСКОЙ ОТРИСОВКИ
-        # ЭТО ТОТ САМЫЙ self.specific_settings_frame, который требовался в load_cfg_to_ui
         self.specific_settings_frame = ctk.CTkScrollableFrame(tab_content, fg_color="transparent")
         self.specific_settings_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
@@ -276,7 +269,7 @@ class WidgetsEditor(ctk.CTkFrame):
             return 
             
         # Используем реестр для получения дефолтного конфига
-        new_cfg = get_default_config(w_type) # <-- get_default_config должен быть импортирован!
+        new_cfg = get_default_config(w_type)
         
         if self.qt_bridge:
             # Отправляем в Qt-поток на создание
@@ -300,7 +293,6 @@ class WidgetsEditor(ctk.CTkFrame):
             return
 
         # 2. Функция-посредник для обновления конфига
-        # Она умеет обрабатывать вложенные ключи типа "content.color"
         def on_update(key_path, value):
             keys = key_path.split(".")
             target = cfg
@@ -316,7 +308,6 @@ class WidgetsEditor(ctk.CTkFrame):
             self.preview_canvas.update_preview(cfg)
 
         # 3. ДЕЛЕГИРУЕМ ОТРИСОВКУ МОДУЛЮ
-        # Вся магия тут:
         if hasattr(module, "render_settings_ui"):
             module.render_settings_ui(self.specific_settings_frame, cfg, on_update)
 
@@ -340,7 +331,7 @@ class WidgetsEditor(ctk.CTkFrame):
         # Обновляем UI
         self.refresh_list()
         self.current_cfg = None
-        self.preview_canvas.delete("all") # Используем preview_canvas, как ты его назвал в _build_ui
+        self.preview_canvas.delete("all")
 
     def toggle_coords_inputs(self):
         """Скрывает или показывает поля ввода координат"""
@@ -446,7 +437,6 @@ class WidgetsEditor(ctk.CTkFrame):
 
     def refresh_list(self):
         """Обновляет список виджетов, беря данные из WidgetManager через QtBridge."""
-        # Этот метод не был показан, но он должен быть!
         self.widget_list.delete(0, tk.END)
         if self.wm:
             # Получаем конфиги из менеджера, чтобы отобразить их
@@ -553,7 +543,7 @@ class WidgetsEditor(ctk.CTkFrame):
         self.attach_title_entry.insert(0, attach_cfg.get("window_title", ""))
 
         # ----------------------------------------------------------------------
-        # 2. СПЕЦИФИЧНЫЕ НАСТРОЙКИ (Вкладка "Контент")
+        # 2. Вкладка "Контент"
         # ----------------------------------------------------------------------
         
         # 1. Очищаем динамический фрейм (тут была твоя ошибка!)
@@ -679,17 +669,12 @@ def run_widgets_editor(widget_manager):
 
         icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.ico"
 
-        # print(f"[DEBUG] Путь к иконке: {icon_path}")
-        # print(f"[DEBUG] Файл существует: {icon_path.exists()}")
 
         if icon_path.exists():
             try:
                 root.iconbitmap(str(icon_path))
-                # print("[DEBUG] Иконка успешно установлена")
             except Exception as e:
                 print(f"Ошибка при установке иконки: {e}")
-        # else:
-        # print("[DEBUG] Файл иконки не найден!")
 
         # Передаём root в редактор
         editor = WidgetsEditor(widget_manager, preexisting_root=root)

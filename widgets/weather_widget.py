@@ -1,3 +1,31 @@
+# ChronoDash - Desktop Widgets
+# Copyright (C) 2025 Overl1te
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""
+Виджет погоды.
+
+Получает данные с Open-Meteo API (бесплатно, без ключа).
+Поддерживает:
+- Автоопределение местоположения по IP (Nominatim)
+- Ручные координаты
+- Отображение текущей температуры, ощущается, осадков
+- Почасовой и ежедневный прогноз
+- Кеширование иконок и названий мест
+"""
+
 import threading
 import requests
 import json
@@ -12,10 +40,16 @@ NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 ICONIFY_URL = "https://api.iconify.design"
 
+
 class WeatherWidget(BaseDesktopWidget):
+    """
+    Виджет отображающий текущую погоду и прогноз.
+    Данные обновляются по таймеру (по умолчанию каждые 15 минут).
+    """
     def __init__(self, cfg=None, is_preview=False):
         super().__init__(cfg, is_preview=is_preview)
 
+        # Данные погоды
         self.current_temp = "Загрузка..."
         self.feels_like = ""
         self.condition = "—"
@@ -25,7 +59,7 @@ class WeatherWidget(BaseDesktopWidget):
         self.daily_data = []
         self.error_message = None
 
-        # Кеши теперь в папке с конфигом (обычно ~/Documents/ChronoDash)
+        # Папка для кешей (иконки и названия мест)
         config_dir = Path(self.cfg.get("config_dir", str(Path.home() / "Documents" / "ChronoDash")))
         config_dir.mkdir(parents=True, exist_ok=True)
 
@@ -41,6 +75,7 @@ class WeatherWidget(BaseDesktopWidget):
             DEFAULT_LAT = 56.267
             DEFAULT_LON = 44.0217
 
+            # Определяем, ручные координаты или автоопределение
             is_manual_location = (abs(self.latitude - DEFAULT_LAT) > 0.001 or
                                   abs(self.longitude - DEFAULT_LON) > 0.001)
 
@@ -55,13 +90,14 @@ class WeatherWidget(BaseDesktopWidget):
             self.show()
 
     def update_config(self, new_cfg: dict):
-        """Переопределяем — просто копируем конфиг"""
+        """Обновляет конфиг — просто копирует (перечитывание настроек в наследниках при необходимости)."""
         self.cfg = new_cfg.copy()
         self._apply_content_settings()
         self.update()
 
     def _load_disk_caches(self):
-        # Иконки (храним SVG как base64)
+        """Загружает кеш иконок и названий мест с диска."""
+        # Кеш иконок (SVG как base64)
         if self.icon_cache_file.exists():
             try:
                 with open(self.icon_cache_file, "r", encoding="utf-8") as f:
@@ -74,7 +110,7 @@ class WeatherWidget(BaseDesktopWidget):
             except Exception as e:
                 print(f"[WEATHER] Ошибка загрузки кеша иконок: {e}")
 
-        # Локация
+        # Кеш локаций
         if self.location_cache_file.exists():
             try:
                 with open(self.location_cache_file, "r", encoding="utf-8") as f:
@@ -86,7 +122,7 @@ class WeatherWidget(BaseDesktopWidget):
                 print(f"[WEATHER] Ошибка загрузки кеша локации: {e}")
 
     def _save_disk_caches(self):
-        # Иконки
+        """Сохраняет кеши иконок и локаций на диск."""
         try:
             icon_data = {}
             for name, (svg_bytes, _) in self.icon_cache.items():
@@ -96,7 +132,6 @@ class WeatherWidget(BaseDesktopWidget):
         except Exception as e:
             print(f"[WEATHER] Ошибка сохранения кеша иконок: {e}")
 
-        # Локация
         try:
             loc_data = {f"{lat:.6f},{lon:.6f}": loc for (lat, lon), loc in self.location_cache.items()}
             with open(self.location_cache_file, "w", encoding="utf-8") as f:
@@ -105,7 +140,9 @@ class WeatherWidget(BaseDesktopWidget):
             print(f"[WEATHER] Ошибка сохранения кеша локации: {e}")
 
     def _apply_content_settings(self):
+        """Извлекает настройки отображения из конфига."""
         content = self.cfg.get("content", {})
+
         self.latitude = float(content.get("latitude", 56.267))
         self.longitude = float(content.get("longitude", 44.0217))
         self.temp_unit = content.get("temp_unit", "celsius")
@@ -161,6 +198,7 @@ class WeatherWidget(BaseDesktopWidget):
         self.cfg["content"]["longitude"] = lon
         print(f"[WEATHER] Локация обновлена ({source}): {lat}, {lon}")
         self._load_weather_data_blocking()
+        QTimer.singleShot(self.update_interval_min * 60 * 1000, self._start_update_timer)
 
     def _show_error(self, text):
         QMessageBox.critical(self, "Ошибка", text)
@@ -224,6 +262,7 @@ class WeatherWidget(BaseDesktopWidget):
             return "Неизвестно"
 
     def _load_weather_data_blocking(self):
+        """Загружает данные погоды с Open-Meteo (блокирующий вызов)."""
         params = {
             "latitude": self.latitude,
             "longitude": self.longitude,
@@ -405,12 +444,13 @@ class WeatherWidget(BaseDesktopWidget):
             painter.setFont(big_font)
             painter.drawText(rect, Qt.AlignCenter, self.error_message)
 
+        # Дополнительная информация и прогноз — в оригинале здесь большой блок кода
 
 # ==============================================================================
-# Дефолтная конфигурация и настройки UI остаются без изменений (кроме одной правки ниже)
+# Дефолтная конфигурация
 # ==============================================================================
-
 def get_default_config():
+    """Возвращает дефолтную конфигурацию для нового виджета погоды."""
     return {
         "type": "weather",
         "name": "Погода",
@@ -432,9 +472,15 @@ def get_default_config():
         }
     }
 
-def render_settings_ui(parent, cfg, on_update):
+
+# ==============================================================================
+# UI настроек в дашборде
+# ==============================================================================
+def render_settings_ui(parent, cfg, on_update, recreate_widget):
     """
-    Полные настройки погоды — без полей широты/долготы, с новыми опциями и пересозданием виджета
+    Отрисовывает специфичные настройки погоды.
+
+    recreate_widget — callback для пересоздания виджета при изменении критичных параметров.
     """
     import customtkinter as ctk
     import tkinter as tk
@@ -570,6 +616,7 @@ def render_settings_ui(parent, cfg, on_update):
     # ctk.CTkCheckBox(parent, text="Компактный режим", variable=compact_var,
     #                 command=lambda: (on_update("content.compact_mode", compact_var.get()), recreate_widget())).pack(anchor="w", padx=20, pady=5)
 
+    # Единицы температуры
     units_var = tk.StringVar(value=content.get("temp_unit", "celsius"))
     units_frame = ctk.CTkFrame(parent, fg_color="transparent")
     units_frame.pack(fill="x", padx=20, pady=5)
@@ -602,5 +649,7 @@ def render_settings_ui(parent, cfg, on_update):
     ctk.CTkCheckBox(parent, text="Клик насквозь", variable=click_through_var,
                     command=lambda: (on_update("click_through", click_through_var.get()), recreate_widget())).pack(anchor="w", padx=20, pady=5)
 
+# ==============================================================================
 # Экспорт класса
+# ==============================================================================
 WidgetClass = WeatherWidget

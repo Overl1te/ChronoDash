@@ -5,37 +5,42 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from PySide6.QtWidgets import QWidget, QApplication, QLabel
+"""
+Оверлей для режима редактирования виджета.
+
+Полноэкранное прозрачное окно:
+- Затемняет экран
+- Показывает подсказку про ESC
+- Перехватывает ESC
+- Полностью пропускает клики мыши к виджету под собой
+"""
+
+from PySide6.QtWidgets import QWidget, QLabel, QApplication
 from PySide6.QtCore import Qt, Signal, QRect
 from PySide6.QtGui import QColor, QPainter, QBrush, QFont
 
+
 class EditOverlay(QWidget):
+    """
+    Оверлей, активный только в режиме редактирования.
+    Позволяет перемещать и изменять размер виджета под собой.
+    """
     stop_edit_signal = Signal()
 
-    def __init__(self, editing_widget):
+    def __init__(self, editing_widget: QWidget):
         super().__init__()
 
-        self.editing_widget = editing_widget  # Сохраняем ссылку на редактируемый виджет
-
-        print("[OVERLAY] Создание EditOverlay")
+        self.editing_widget = editing_widget
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
-        self._resize_to_screen()
+        self._resize_to_all_screens()
 
+        # Подсказка
         self.hint_label = QLabel("Для выхода нажмите ESC", self)
-        self.hint_label.setStyleSheet(
-            """
+        self.hint_label.setStyleSheet("""
             QLabel {
                 color: white;
                 background-color: rgba(128, 128, 128, 120);
@@ -44,8 +49,7 @@ class EditOverlay(QWidget):
                 font-size: 16px;
                 font-family: Segoe UI, Arial;
             }
-        """
-        )
+        """)
         self.hint_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
         self.hint_label.setAlignment(Qt.AlignCenter)
         self.hint_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
@@ -53,14 +57,12 @@ class EditOverlay(QWidget):
         self._position_hint_label()
         self.hint_label.show()
 
+        # Захват клавиатуры для ESC
         self.setFocusPolicy(Qt.StrongFocus)
         self.grabKeyboard()
         self.show()
-        # НЕ поднимаем оверлей через raise_() — виджет будет поднят отдельно
 
-        print(f"[OVERLAY] EditOverlay показан. Geometry: {self.geometry()}, visible={self.isVisible()}")
-
-    def _resize_to_screen(self):
+    def _resize_to_all_screens(self):
         total_rect = QRect()
         app = QApplication.instance()
         for screen in app.screens():
@@ -74,9 +76,9 @@ class EditOverlay(QWidget):
     def _position_hint_label(self):
         label_width = 500
         label_height = 60
-        screen_geo = QApplication.primaryScreen().availableGeometry()
+        primary_geo = QApplication.primaryScreen().availableGeometry()
 
-        x = (screen_geo.width() - label_width) // 2
+        x = (primary_geo.width() - label_width) // 2
         y = 20
 
         self.hint_label.setGeometry(x, y, label_width, label_height)
@@ -93,13 +95,19 @@ class EditOverlay(QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
-            print("[OVERLAY] Нажата ESC — эмитируем stop_edit_signal")
             self.stop_edit_signal.emit()
 
     def mousePressEvent(self, event):
-        # Важно: пропускаем клики, чтобы они попадали в редактируемый виджет под оверлеем
+        """
+        КЛЮЧЕВОЙ МЕТОД: пропускает клик к виджету под оверлеем.
+
+        1. activateWindow() — заставляет Windows/Qt "знать", что клик предназначен виджету
+        2. event.ignore() — позволяет событию пройти сквозь оверлей
+        Без обоих — клики не доходят до BaseDesktopWidget!
+        """
         self.editing_widget.activateWindow()
-    
+        event.ignore()  # Это обязательно!
+
     def closeEvent(self, event):
         print("[OVERLAY] EditOverlay закрывается (closeEvent)")
         super().closeEvent(event)

@@ -1,9 +1,24 @@
-PySide6>=6.5.0
-pystray
-Pillow>=9.0.0
-pywin32>=305; platform_system=="Windows"
-customtkinter>=5.0.0
-psutil>=5.9.0
-requests>=2.28.0
-openmeteo-requests
-requests-cache retry-requests numpy pandas
+# Основные зависимости для Qt-виджетов
+PySide6>=6.5.0  # Для десктопных виджетов (PySide6)
+
+# UI дашборда
+customtkinter>=5.2.0  # Современный Tkinter для настроек
+
+# Системный трей
+pystray>=0.19.0  # Для иконки в трее
+Pillow>=10.0.0  # Для обработки изображений в трее и превью
+
+# Для Windows: скрытие из таскбара, Alt+Tab, привязка к окнам
+pywin32>=306; platform_system == "Windows"
+
+# Погода: Open-Meteo API клиент и кэширование
+openmeteo-requests>=0.1.0
+requests-cache>=1.0.0  # Кэширование запросов
+retry-requests>=0.1.0  # Повтор запросов при ошибках
+
+# Данные и обработка (используется в weather_widget для numpy/pandas)
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Утилиты
+psutil>=5.9.0  # Мониторинг системы (если нужно)
