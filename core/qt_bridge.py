@@ -99,32 +99,8 @@ class QtBridge(QObject):
                 pass
 
 
-    def _handle_delete(self, widget_id: str):
-        self.wm.delete_widget(widget_id)
-
-    def _handle_create(self, cfg: dict):
-        self.wm.create_widget_from_template(cfg.copy())  # Вызываем в Qt-потоке
-
-    def disconnect(self):
-        try:
-            self.update_widget_signal.disconnect(self._handle_update)
-        except RuntimeError:
-            pass
-        try:
-            self.start_edit_mode_signal.disconnect(self.wm.enter_edit_mode)
-        except RuntimeError:
-            pass
-        try:
-            self.delete_widget_signal.disconnect(self._handle_delete)
-        except RuntimeError:
-            pass
-        try:
-            self.create_widget_signal.disconnect(self._handle_create)
-        except RuntimeError:
-            pass
-
-
-_qt_bridge = None
+# Singleton-механизм
+_qt_bridge_instance = None
 
 
 def get_qt_bridge(widget_manager=None):
@@ -135,9 +111,9 @@ def get_qt_bridge(widget_manager=None):
     return _qt_bridge_instance
 
 
-
 def clear_qt_bridge():
-    global _qt_bridge
-    if _qt_bridge:
-        _qt_bridge.disconnect()
-    _qt_bridge = None
+    """Очищает singleton при полном завершении приложения."""
+    global _qt_bridge_instance
+    if _qt_bridge_instance:
+        _qt_bridge_instance.disconnect()
+        _qt_bridge_instance = None

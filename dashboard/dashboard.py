@@ -365,40 +365,6 @@ class WidgetsEditor(ctk.CTkFrame):
         else:
             messagebox.showerror("Ошибка", "Связь с графическим ядром (Qt) потеряна.")
 
-    # --- НОВЫЕ МЕТОДЫ ДЛЯ ВИЗУАЛЬНОГО РЕДАКТОРА ---
-
-    def toggle_coords_inputs(self):
-        """Скрывает или показывает поля ввода координат"""
-        if self.show_coords_var.get():
-            # Показываем фрейм с координатами
-            self.coords_frame.pack(
-                fill="x", after=self.coords_frame.master.winfo_children()[2]
-            )
-        else:
-            # Скрываем
-            self.coords_frame.pack_forget()
-
-    def start_visual_edit(self):
-        """Запускает режим редактирования через Qt"""
-        if not self.current_cfg:
-            messagebox.showwarning("Внимание", "Сначала выберите виджет из списка!")
-            return
-
-        widget_id = self.current_cfg["id"]
-
-        if self.qt_bridge:
-            # Отправляем сигнал в поток Qt
-            # Это вызовет wm.enter_edit_mode(widget_id)
-            try:
-                self.qt_bridge.start_edit_mode_signal.emit(widget_id)
-            except AttributeError:
-                messagebox.showerror(
-                    "Ошибка",
-                    "Сигнал start_edit_mode_signal не найден в QtBridge.\nОбновите qt_bridge.py!",
-                )
-        else:
-            messagebox.showerror("Ошибка", "Связь с графическим ядром (Qt) потеряна.")
-
     def add_new_clock(self):
         new_cfg = {
             "id": None,

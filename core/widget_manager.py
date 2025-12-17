@@ -172,71 +172,6 @@ class WidgetManager:
 
         self.editing_widget_id = None
 
-    # --- ЛОГИКА РЕДАКТОРА ---
-    def enter_edit_mode(self, widget_id):
-        if widget_id not in self.widgets:
-            return
-
-        print(f"Вход в режим редактора: {widget_id}")
-
-        if self.editing_widget_id and self.editing_widget_id != widget_id:
-            self.exit_edit_mode()
-
-        self.editing_widget_id = widget_id
-
-        if self.overlay:
-            self.overlay.close()
-
-        from core.edit_overlay import EditOverlay
-
-        self.overlay = EditOverlay()
-        self.overlay.stop_edit_signal.connect(self.exit_edit_mode)
-
-        widget = self.widgets[widget_id]
-        widget.set_edit_mode(True)
-
-        widget.raise_()
-        widget.activateWindow()
-
-    def exit_edit_mode(self):
-        if not self.editing_widget_id:
-            if self.overlay:
-                self.overlay.close()
-                self.overlay = None
-            return
-
-        print("Выход из режима редактора...")
-        widget_id = self.editing_widget_id
-
-        if widget_id in self.widgets:
-            widget = self.widgets[widget_id]
-            widget.set_edit_mode(False)  # Выходим из режима, возвращаем старые флаги
-
-            # Сохраняем новые координаты
-            new_geo = widget.geometry()
-
-            for c in self.config:
-                if c["id"] == widget_id:
-                    c["x"] = new_geo.x()
-                    c["y"] = new_geo.y()
-                    c["width"] = new_geo.width()
-                    c["height"] = new_geo.height()
-                    break
-
-            self._save()
-            print("Координаты сохранены.")
-
-        if self.overlay:
-            try:
-                self.overlay.releaseKeyboard()  # Освобождаем клавиатуру
-            except:
-                pass  # Может быть ошибка, если он уже закрыт
-
-            self.overlay.close()
-            self.overlay = None
-
-        self.editing_widget_id = None
-
     def stop_all_widgets(self):
         print("Закрытие всех виджетов...")
         if self.overlay:
@@ -255,6 +190,7 @@ class WidgetManager:
             old = self.widgets.pop(widget_id)
             old.close()
             old.deleteLater()
+
         cfg = next((c for c in self.config if c.get("id") == widget_id), None)
         if cfg:
             self._create_widget_instance(cfg.copy())
