@@ -210,3 +210,5 @@ __marimo__/
 
 # Other
 task.MD
+start.bat
+*.log

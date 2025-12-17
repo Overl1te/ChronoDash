@@ -1,4 +1,20 @@
-# core/tray.py
+# ChronoDash - Desktop Widgets
+# Copyright (C) 2025 Overl1te
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+from pathlib import Path
 from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem as Item, Menu
@@ -45,7 +61,7 @@ class TrayApp:
         return Menu(
             # Теперь виджеты всегда видны после запуска _init_qt_app
             Item("Перезапустить виджеты", self._restart_qt),
-            Item("Настройки", lambda: run_widgets_editor(self.wm)),
+            Item("Мои виджеты", lambda: run_widgets_editor(self.wm)),
             Item("Выход", self.stop),
         )
 
