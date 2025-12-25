@@ -79,6 +79,8 @@ pip install -r requirements.txt
 
 # Запустить
 python main.py
+
+# Для сборки проекта смотрите ниже
 ```
 
 📋 Требования
@@ -91,7 +93,7 @@ Python 3.8 или выше
 ### Основные действия
 - **Запустите приложение - появится иконка в системном трее**
 - **Кликните правой кнопкой по иконке в трее**
-- **Выберите "Конструктор" для создания нового виджета**
+- **Выберите "Мои виджеты" для создания нового виджета**
 - **Настройте параметры и сохраните**
 - **Перетаскивайте виджеты правой кнопкой мыши**
 
@@ -175,13 +177,24 @@ if widget_type == "my_widget":
 
 
 ### 📦 Сборка проекта
+#### Windows
 ```bash
 # Сборка с Nuitka
-python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=pyside6 --enable-plugin=tk-inter --follow-imports --output-dir=build --windows-icon-from-ico=assets/icons/logo.ico --include-data-dir=assets=assets --output-filename=ChronoDash.exe main.py
+python -m nuitka --standalone --windows-console-mode=disable --enable-plugin=pyside6 --enable-plugin=tk-inter --follow-imports --output-dir=build --windows-icon-from-ico=assets/icons/logo.ico --include-data-dir=assets=assets --output-filename=ChronoDash.exe main.py
 
 # Или с PyInstaller
-pyinstaller --name=ChronoDash --onefile --windowed --icon=assets/icons/logo.ico --add-data "assets;assets" main.py
+pyinstaller --name=ChronoDash --windowed --icon=assets/icons/logo.ico --add-data "assets;assets" main.py
 ```
+#### Arch Linux
+```bash
+# Сборка проекта, через PyInstaller
+./build_arch.sh
+# Установка
+./install.sh
+# Удаление
+sudo ./uninstall.sh
+```
+
 
 ### 📖 API документация
 - **Базовый класс виджета**
