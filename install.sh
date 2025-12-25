@@ -224,7 +224,7 @@ sudo cp "$ICON_PATH" /usr/share/icons/hicolor/64x64/apps/chronodash.png 2>/dev/n
 echo "Создание конфигурации..."
 cat > ~/.config/chronodash/config.json << 'CONFIG'
 {
-    "version": "1.0.0",
+    "version": "2.2.0",
     "widgets": {
         "clock": {
             "enabled": true,

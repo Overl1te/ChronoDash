@@ -60,11 +60,23 @@ Coming soon...
 3. Запустите файл - программа запустится в системном трее
 
 
-<!-- #### Linux
-##### Arch Linux
+#### Linux
+##### • Arch Linux
+Способ 1:
+1. Перейдите в [Releases](https://github.com/Overl1te/ChronoDash/releases)
+2. Скачайте последнюю версию `ChronoDash.tar.xz`
+3. Разархивируйте, запустите ChronoDash - появится окно программы
+
+Способ 2:
 ```bash
+# Установите из отого репозитория
 yay -S chronodash
-``` -->
+# или
+paru -S chronodash
+
+# Запустите
+chronodash
+```
 
 
 ### Вариант 2: Установка из исходников
