@@ -54,9 +54,18 @@ Coming soon...
 
 ### Вариант 1: Скачать готовый билд (рекомендуется)
 
+#### Windows
 1. Перейдите в [Releases](https://github.com/Overl1te/ChronoDash/releases)
 2. Скачайте последнюю версию `ChronoDash.exe` или `ChronoDash_Setup.exe`
 3. Запустите файл - программа запустится в системном трее
+
+
+<!-- #### Linux
+##### Arch Linux
+```bash
+yay -S chronodash
+``` -->
+
 
 ### Вариант 2: Установка из исходников
 

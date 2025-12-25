@@ -67,9 +67,9 @@ class BaseDesktopWidget(QWidget):
 
         # Иконка приложения
         if platform.system() == "Windows":
-            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.ico"
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "chronodash.ico"
         else:
-            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.png"
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "chronodash.png"
 
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))

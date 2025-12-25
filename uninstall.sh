@@ -16,7 +16,7 @@ fi
 echo "Удаление файлов..."
 
 # Удаляем системные файлы
-sudo rm -rf /opt/ChronoDash
+sudo rm -rf /opt/chronodash
 sudo rm -f /usr/bin/chronodash
 sudo rm -f /usr/bin/chronodash-debug
 sudo rm -f /usr/share/applications/chronodash.desktop
@@ -27,11 +27,10 @@ sudo gtk-update-icon-cache /usr/share/icons/hicolor/ 2>/dev/null || true
 
 echo ""
 echo "✅ ChronoDash удален"
-echo ""
-echo "=== ОСТАВШИЕСЯ ФАЙЛЫ (ручное удаление) ==="
-echo "  Конфигурация:   ~/.config/chronodash/"
-echo "  Кэш:            ~/.cache/chronodash/"
-echo "  Логи:           ~/.local/share/chronodash/"
-echo ""
-echo "Для полного удаления:"
-echo "  rm -rf ~/.config/chronodash ~/.cache/chronodash ~/.local/share/chronodash"
+# echo ""
+# echo "=== ОСТАВШИЕСЯ ФАЙЛЫ (ручное удаление) ==="
+# echo "  Конфигурация:   ~/.config/chronodash/"
+# echo "  Кэш:            ~/.cache/chronodash/"
+# echo "  Логи:           ~/.local/share/chronodash/"
+# echo ""
+sudo rm -rf ~/.config/chronodash ~/.cache/chronodash ~/.local/share/chronodash

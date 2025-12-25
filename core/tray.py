@@ -26,7 +26,10 @@ class TrayApp:
         self.tray_icon = QSystemTrayIcon()
         
         # Загружаем иконку
-        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.ico"
+        if platform.system() == "Windows":
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "chronodash.ico"
+        else:
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "chronodash.png"
         if icon_path.exists():
             self.tray_icon.setIcon(QIcon(str(icon_path)))
         else:
