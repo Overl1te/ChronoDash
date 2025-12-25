@@ -27,6 +27,7 @@
 """
 
 from pathlib import Path
+import platform
 import sys
 import traceback
 from core.widget_manager import WidgetManager
@@ -46,27 +47,36 @@ def main():
     5. При выходе из трея — завершаем Qt-приложение
     """
     try:
-        # 1. Создаём папку для конфига (обычно ~/Documents/ChronoDash)
+        # 1. Создаём папку для конфига
         docs = Path.home() / "Documents" / "ChronoDash"
         docs.mkdir(parents=True, exist_ok=True)
         config_path = docs / "widgets.json"
 
-        # 2. Инициализируем QApplication (обязательно в главном потоке)
+        # 2. Инициализируем QApplication
         app = QApplication.instance() or QApplication(sys.argv)
-        app.setQuitOnLastWindowClosed(False)  # Не закрывать приложение при закрытии окон
+        app.setQuitOnLastWindowClosed(False)
+        app.setApplicationName("ChronoDash")
+        app.setApplicationDisplayName("ChronoDash Desktop Widgets")
 
-        # 3. Создаём менеджер виджетов (загружает конфиг, создаёт/удаляет виджеты)
+        # 3. Создаём менеджер виджетов
         wm = WidgetManager(config_path)
 
-        # 4. Запускаем трей — он блокирует поток до нажатия "Выход"
+        # 4. Запускаем трей (неблокирующий)
         tray = TrayApp(wm)
         tray.run()
 
-        # 5. После выхода из трея — завершаем Qt-приложение
-        app.quit()
+        print("ChronoDash успешно запущен!")
+        print("Приложение работает в фоновом режиме.")
+        
+        if platform.system() == "Linux":
+            print("На Linux приложение может работать как:")
+            print("  - Иконка в системном трее (если окружение поддерживает)")
+            print("  - Окно управления (если трей недоступен)")
+
+        # 5. Запускаем главный цикл Qt
+        sys.exit(app.exec())
 
     except Exception as e:
-        # Если что-то пошло не так — показываем ошибку и ждём нажатия Enter
         print(f"ERROR: {e}")
         traceback.print_exc()
         input("Нажми Enter чтобы выйти...")

@@ -16,6 +16,7 @@
 
 from pathlib import Path
 import customtkinter as ctk
+import platform
 import threading
 import tkinter as tk
 from tkinter import messagebox
@@ -633,14 +634,34 @@ def run_widgets_editor(widget_manager):
         root.geometry("1100x700")
         root.minsize(1000, 600)
 
-        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.ico"
-
-
-        if icon_path.exists():
-            try:
-                root.iconbitmap(str(icon_path))
-            except Exception as e:
-                print(f"Ошибка при установке иконки: {e}")
+        # Для Linux используем другой способ установки иконки
+        if platform.system() == "Windows":
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.ico"
+            if icon_path.exists():
+                try:
+                    root.iconbitmap(str(icon_path))
+                except Exception as e:
+                    print(f"Windows icon error: {e}")
+        else:
+            # Для Linux пробуем загрузить через PhotoImage
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.png"
+            if icon_path.exists():
+                try:
+                    from PIL import Image, ImageTk
+                    img = Image.open(icon_path)
+                    photo = ImageTk.PhotoImage(img)
+                    root.iconphoto(True, photo)
+                    # Сохраняем ссылку, чтобы не удалился сборщиком мусора
+                    root._icon = photo
+                except Exception as e:
+                    print(f"Linux icon error: {e}")
+                    # Fallback: попробуем ICO
+                    icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.ico"
+                    if icon_path.exists():
+                        try:
+                            root.iconbitmap(str(icon_path))
+                        except:
+                            pass
 
         # Передаём root в редактор
         editor = WidgetsEditor(widget_manager, preexisting_root=root)

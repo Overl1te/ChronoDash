@@ -66,7 +66,11 @@ class BaseDesktopWidget(QWidget):
         self.move(self.cfg.get("x", 100), self.cfg.get("y", 100))
 
         # Иконка приложения
-        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.ico"
+        if platform.system() == "Windows":
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.ico"
+        else:
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo.png"
+
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
 

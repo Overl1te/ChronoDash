@@ -22,3 +22,15 @@ pandas>=2.0.0
 
 # Утилиты
 psutil>=5.9.0  # Мониторинг системы (если нужно)
+
+# Инструменты для сборки
+pyinstaller
+setuptools 
+wheel
+
+# For linux
+Xlib
+
+# Arch sudo pacman -S libappindicator-gtk3 
+# Ubuntu/Debian sudo apt-get install gir1.2-appindicator3-0.1 
+# Fedora sudo dnf install libappindicator-gtk3
