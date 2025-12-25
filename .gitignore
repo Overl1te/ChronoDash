@@ -221,3 +221,5 @@ TERMS_OF_USE
 start.sh
 hook-*.py
 hooks/
+*.AppImage
+AppDir/
