@@ -3,7 +3,7 @@ set -e
 
 # === НАСТРОЙКИ ===
 APP_NAME="chronodash"
-VERSION="2.2.3"
+VERSION="2.2.4"
 EMAIL="Overl1teGithub@yandex.ru"
 PPA_TARGET="chronodash-ppa"
 # =================
@@ -17,18 +17,17 @@ NC='\033[0m' # No Color
 function show_help {
     echo -e "${BLUE}Использование:${NC}"
     echo "  ./build_deb.sh release          -> Собрать 'толстый' .deb (PyInstaller). РАБОТАЕТ ВЕЗДЕ."
-    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить в PPA (только исходники). Для Ubuntu."
+    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить ГИБРИДНЫЙ PPA (докачивает PySide6 через pip)."
     echo ""
     echo -e "${BLUE}Примеры:${NC}"
     echo "  ./build_deb.sh release"
-    echo "  ./build_deb.sh ppa"
-    echo "  ./build_deb.sh ppa 3AA5C343..."
+    echo "  ./build_deb.sh ppa EEC86D2065150ECE"
 }
 
 function clean_all {
     echo -e "${BLUE}[Clean] Очистка мусора...${NC}"
     rm -rf dist build pkg *.deb *.spec venv *.egg-info
-    # Удаляем файлы сборки уровнем выше, но оставляем debian/ внутри
+    # Удаляем файлы сборки уровнем выше
     rm -rf ../${APP_NAME}_*
 }
 
@@ -83,8 +82,6 @@ Categories=Utility;
 EOF
 
     # Control для бинарной версии
-    # ВАЖНО: Убрана зависимость python3-pyside6, так как она внутри!
-    # Добавлен libx11-xcb1 для стабильности Qt
     cat > pkg/DEBIAN/control <<EOF
 Package: $APP_NAME
 Version: $VERSION
@@ -107,12 +104,12 @@ EOF
     echo "Установка (работает на Debian Trixie): sudo dpkg -i $DEB_NAME"
 }
 
-# === ВАРИАНТ 2: ДЛЯ PPA / UBUNTU USERS ===
-# Отправляет исходники, использует системные библиотеки
+# === ВАРИАНТ 2: ДЛЯ PPA / UBUNTU (ГИБРИДНЫЙ) ===
+# Генерирует файлы debian/ на лету, чтобы добавить pip-install скрипты
 function build_ppa {
-    local KEY_ID="$1" # Получаем аргумент ключа
+    local KEY_ID="$1"
     
-    echo -e "${GREEN}=== ОТПРАВКА В PPA (SOURCE PACKAGE) ===${NC}"
+    echo -e "${GREEN}=== СБОРКА ГИБРИДНОГО PPA (PIP-INSTALLER) ===${NC}"
     
     if [ ! -d "debian" ]; then
         echo -e "${RED}ОШИБКА: Нет папки debian/ в корне проекта!${NC}"
@@ -121,12 +118,116 @@ function build_ppa {
 
     clean_all
 
-    echo -e "${BLUE}[1/3] Сборка Source Package...${NC}"
+    echo -e "${BLUE}[1/2] Генерация конфигурации PPA (обход зависимостей)...${NC}"
+
+    # 1. CONTROL: Убираем python3-pyside6, добавляем pip и venv
+    cat > debian/control <<EOF
+Source: $APP_NAME
+Section: utils
+Priority: optional
+Maintainer: Overl1te <$EMAIL>
+Build-Depends: debhelper-compat (= 13), python3-all, dh-python
+Standards-Version: 4.6.2
+Homepage: https://github.com/Overl1te/ChronoDash
+
+Package: $APP_NAME
+Architecture: all
+Depends: \${python3:Depends}, \${misc:Depends}, python3-pip, python3-venv, python3-tk, libgl1
+Description: ChronoDash Desktop Widgets
+ Application for tracking time.
+ NOTE: This package will download PySide6 via pip during installation
+ because it is missing from standard repositories.
+EOF
+
+    # 2. POSTINST: Скрипт, который выполняется ПОСЛЕ установки
+    cat > debian/postinst <<EOF
+#!/bin/sh
+set -e
+
+case "\$1" in
+    configure)
+        echo "--> Creating virtual environment for ChronoDash..."
+        if [ ! -d "/usr/share/$APP_NAME/venv" ]; then
+            python3 -m venv /usr/share/$APP_NAME/venv
+        fi
+        
+        echo "--> Installing PySide6 via pip (fetching from PyPI)..."
+        # Устанавливаем библиотеки в изолированную среду
+        /usr/share/$APP_NAME/venv/bin/pip install --upgrade pip --quiet
+        /usr/share/$APP_NAME/venv/bin/pip install pyside6 --quiet
+        
+        # Исправляем права, чтобы обычный пользователь мог запускать
+        chmod -R a+rX /usr/share/$APP_NAME/venv
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \\\`\$1'" >&2
+        exit 1
+    ;;
+esac
+
+#DEBHELPER#
+exit 0
+EOF
+    chmod +x debian/postinst
+
+    # 3. PRERM: Удаление venv при сносе программы
+    cat > debian/prerm <<EOF
+#!/bin/sh
+set -e
+case "\$1" in
+    remove|upgrade|deconfigure)
+        rm -rf /usr/share/$APP_NAME/venv
+    ;;
+esac
+#DEBHELPER#
+exit 0
+EOF
+    chmod +x debian/prerm
+
+    # 4. INSTALL: Куда класть файлы
+    cat > debian/install <<EOF
+main.py usr/share/$APP_NAME/
+core/ usr/share/$APP_NAME/
+widgets/ usr/share/$APP_NAME/
+dashboard/ usr/share/$APP_NAME/
+assets/ usr/share/$APP_NAME/
+debian/$APP_NAME.desktop usr/share/applications/
+assets/icons/chronodash.png usr/share/icons/hicolor/64x64/apps/
+EOF
+
+    # 5. RULES: Создаем кастомный скрипт запуска через venv
+    cat > debian/rules <<MAKE
+#!/usr/bin/make -f
+
+%:
+	dh \$@ --with python3
+
+override_dh_auto_build:
+	true
+
+override_dh_auto_install:
+	true
+
+override_dh_install:
+	dh_install
+	mkdir -p debian/$APP_NAME/usr/bin
+	# Лаунчер запускает python из venv!
+	echo '#!/bin/sh' > debian/$APP_NAME/usr/bin/$APP_NAME
+	echo 'exec /usr/share/$APP_NAME/venv/bin/python3 /usr/share/$APP_NAME/main.py "\$\$@"' >> debian/$APP_NAME/usr/bin/$APP_NAME
+	chmod +x debian/$APP_NAME/usr/bin/$APP_NAME
+MAKE
+    chmod +x debian/rules
+
+    echo -e "${BLUE}[2/2] Сборка и отправка...${NC}"
     
     # -S: только исходники
     # -sa: включать orig.tar.gz
-    # -d: игнорировать отсутствие зависимостей (нужно для сборки на Debian)
-    # ARGS="-S -sa -d --no-lintian"
+    # -d: игнорировать зависимости сборки (важно для Debian!)
+    #ARGS="-S -sa -d --no-lintian"
     ARGS="-S -sa -d"
     
     if [ -n "$KEY_ID" ]; then
@@ -136,10 +237,8 @@ function build_ppa {
         echo -e "⚠️ Ключ не передан. Будет использован ключ по умолчанию для ${BLUE}$EMAIL${NC}"
     fi
 
-    # Запуск debuild
     debuild $ARGS
 
-    echo -e "${BLUE}[2/3] Поиск файла .changes...${NC}"
     cd ..
     CHANGES_FILE=$(ls ${APP_NAME}_*source.changes | tail -n 1)
     
@@ -148,11 +247,14 @@ function build_ppa {
         exit 1
     fi
 
-    echo -e "${BLUE}[3/3] Отправка...${NC}"
+    echo -e "${BLUE}Отправка...${NC}"
     dput $PPA_TARGET $CHANGES_FILE
     
     echo -e "${GREEN}✅ УСПЕШНО ОТПРАВЛЕНО В PPA!${NC}"
-    cd $APP_NAME
+    #echo "Теперь при установке 'sudo apt install' у пользователя сам скачается PySide6."
+    
+    # Возвращаемся в папку проекта
+    cd "$APP_NAME" || cd ChronoDash || true
 }
 
 # === МЕНЮ ===
@@ -161,7 +263,6 @@ case "$1" in
         build_release
         ;;
     ppa)
-        # Передаем второй аргумент (ключ) в функцию
         build_ppa "$2"
         ;;
     clean)

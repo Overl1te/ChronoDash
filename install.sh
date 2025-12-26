@@ -199,7 +199,7 @@ fi
 
 # Создаем MetaInfo
 cat > pkg/usr/share/metainfo/chronodash.metainfo.xml <<XML
-<?xml version="2.2.3" encoding="UTF-8"?>
+<?xml version="2.2.4" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>chronodash.desktop</id>
 
@@ -243,7 +243,7 @@ echo "Создание файла меню..."
 sudo tee /usr/share/applications/chronodash.desktop > /dev/null << 'DESKTOP'
 [Desktop Entry]
 Type=Application
-Version=2.2.3
+Version=2.2.4
 
 Name=ChronoDash
 GenericName=Desktop Widgets
@@ -269,7 +269,7 @@ sudo cp "$ICON_PATH" /usr/share/icons/hicolor/64x64/apps/chronodash.png 2>/dev/n
 echo "Создание конфигурации..."
 cat > ~/.config/chronodash/config.json << 'CONFIG'
 {
-    "version": "2.2.3",
+    "version": "2.2.4",
     "widgets": {
         "clock": {
             "enabled": true,
