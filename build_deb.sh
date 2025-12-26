@@ -29,7 +29,7 @@ function clean_all {
     rm -rf dist build pkg *.deb *.spec venv *.egg-info
     # Удаляем файлы сборки уровнем выше, но оставляем debian/ внутри
     rm -rf ../${APP_NAME}_* }
-
+}
 function build_release {
     echo -e "${GREEN}=== СБОРКА RELEASE (BINARY .DEB) ===${NC}"
     clean_all
