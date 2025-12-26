@@ -3,7 +3,7 @@ set -e
 
 # === НАСТРОЙКИ ===
 APP_NAME="chronodash"
-VERSION="2.2.2"
+VERSION="2.2.3"
 EMAIL="Overl1teGithub@yandex.ru"
 PPA_TARGET="chronodash-ppa"
 # =================
@@ -16,22 +16,26 @@ NC='\033[0m' # No Color
 
 function show_help {
     echo -e "${BLUE}Использование:${NC}"
-    echo "  ./build_deb.sh release          -> Собрать бинарный .deb (PyInstaller)"
-    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить в PPA (можно указать ID ключа)"
+    echo "  ./build_deb.sh release          -> Собрать 'толстый' .deb (PyInstaller). РАБОТАЕТ ВЕЗДЕ."
+    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить в PPA (только исходники). Для Ubuntu."
     echo ""
     echo -e "${BLUE}Примеры:${NC}"
-    echo "  ./build_deb.sh ppa              -> Авто-поиск ключа по email"
-    echo "  ./build_deb.sh ppa 3AA5C343...  -> Использовать конкретный ключ"
+    echo "  ./build_deb.sh release"
+    echo "  ./build_deb.sh ppa"
+    echo "  ./build_deb.sh ppa 3AA5C343..."
 }
 
 function clean_all {
-    echo -e "${BLUE}[Clean] Очистка...${NC}"
+    echo -e "${BLUE}[Clean] Очистка мусора...${NC}"
     rm -rf dist build pkg *.deb *.spec venv *.egg-info
     # Удаляем файлы сборки уровнем выше, но оставляем debian/ внутри
-    rm -rf ../${APP_NAME}_* }
+    rm -rf ../${APP_NAME}_*
 }
+
+# === ВАРИАНТ 1: ДЛЯ ВАС (Debian) И GITHUB RELEASES ===
+# Собирает всё в один файл (включая PySide6), не зависит от системного Python
 function build_release {
-    echo -e "${GREEN}=== СБОРКА RELEASE (BINARY .DEB) ===${NC}"
+    echo -e "${GREEN}=== СБОРКА RELEASE (PYINSTALLER / STANDALONE) ===${NC}"
     clean_all
 
     echo -e "${BLUE}[1/5] Подготовка venv...${NC}"
@@ -78,7 +82,9 @@ Terminal=false
 Categories=Utility;
 EOF
 
-    # Control для бинарной версии (БЕЗ зависимости от python3-pyside6)
+    # Control для бинарной версии
+    # ВАЖНО: Убрана зависимость python3-pyside6, так как она внутри!
+    # Добавлен libx11-xcb1 для стабильности Qt
     cat > pkg/DEBIAN/control <<EOF
 Package: $APP_NAME
 Version: $VERSION
@@ -86,27 +92,30 @@ Section: utils
 Priority: optional
 Architecture: amd64
 Maintainer: Overl1te <$EMAIL>
-Depends: libc6, libgl1, libx11-6
+Depends: libc6, libgl1, libx11-6, libx11-xcb1
 Description: ChronoDash Desktop Widgets (Standalone)
- Standalone version with bundled dependencies.
+ Standalone version with bundled dependencies. Works on Debian/Ubuntu.
 EOF
     
     chmod -R 755 pkg/DEBIAN pkg/opt/$APP_NAME pkg/usr/bin
 
     echo -e "${BLUE}[5/5] Сборка .deb...${NC}"
-    DEB_NAME="${APP_NAME}_${VERSION}_amd64.deb"
+    DEB_NAME="${APP_NAME}_${VERSION}_full_amd64.deb"
     dpkg-deb --build pkg "$DEB_NAME"
     
     echo -e "${GREEN}✅ ГОТОВО! Файл: $DEB_NAME${NC}"
+    echo "Установка (работает на Debian Trixie): sudo dpkg -i $DEB_NAME"
 }
 
+# === ВАРИАНТ 2: ДЛЯ PPA / UBUNTU USERS ===
+# Отправляет исходники, использует системные библиотеки
 function build_ppa {
     local KEY_ID="$1" # Получаем аргумент ключа
     
     echo -e "${GREEN}=== ОТПРАВКА В PPA (SOURCE PACKAGE) ===${NC}"
     
     if [ ! -d "debian" ]; then
-        echo -e "${RED}ОШИБКА: Нет папки debian/!${NC}"
+        echo -e "${RED}ОШИБКА: Нет папки debian/ в корне проекта!${NC}"
         exit 1
     fi
 
@@ -116,7 +125,8 @@ function build_ppa {
     
     # -S: только исходники
     # -sa: включать orig.tar.gz
-    # -d: игнорировать отсутствие зависимостей (важно для Debian)
+    # -d: игнорировать отсутствие зависимостей (нужно для сборки на Debian)
+    # ARGS="-S -sa -d --no-lintian"
     ARGS="-S -sa -d"
     
     if [ -n "$KEY_ID" ]; then
@@ -141,7 +151,7 @@ function build_ppa {
     echo -e "${BLUE}[3/3] Отправка...${NC}"
     dput $PPA_TARGET $CHANGES_FILE
     
-    echo -e "${GREEN}✅ УСПЕШНО ОТПРАВЛЕНО!${NC}"
+    echo -e "${GREEN}✅ УСПЕШНО ОТПРАВЛЕНО В PPA!${NC}"
     cd $APP_NAME
 }
 
