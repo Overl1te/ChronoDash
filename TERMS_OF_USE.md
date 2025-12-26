@@ -1,5 +1,5 @@
 ## Условия использования ChronoDash
-### Версия 1.0
+### Версия 1.1
 ### Дата вступления в силу: 18 декабря 2025 года
 
 ##
@@ -49,6 +49,6 @@
 - Лицензия и настоящие Условия регулируются законодательством, указанным в GPLv3. Споры разрешаются в соответствии с применимым правом.
 ### 11. Контакты
 По вопросам лицензии и использования:
-GitHub: @Overl1te
-Email: Overl1teGithub@yandex.ru
-Telegram channel: @WayFullStack
+- GitHub: @Overl1te
+- Email: Overl1teGithub@yandex.ru
+- Telegram channel: @WayFullStack
