@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=2.2.1
+Name=ChronoDash
+GenericName=Desktop Widgets
+Comment=Modern, customizable desktop widgets
+Exec=/usr/bin/chronodash
+Icon=chronodash
+Terminal=false
+StartupNotify=true
+Categories=Utility;System;
+Keywords=widget;desktop;clock;time;weather;

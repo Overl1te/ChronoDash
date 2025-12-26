@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ChronoDash
+Source: https://github.com/Overl1te/ChronoDash
+
+Files: *
+Copyright: 2025 Overl1te
+License: GPLv3
+  https://github.com/Overl1te/ChronoDash/blob/main/LICENSE
