@@ -1,5 +1,5 @@
-chronodash (2.2.1-0ubuntu1~ppa1) noble; urgency=low
+chronodash (2.2.2-0ubuntu1~ppa1) noble; urgency=low
 
-  * Added support Debian/Ubuntu version
+  * Fixed previous version
 
- -- Overl1te <Overl1teGithub@yandex.ru>  Fri, 26 Dec 2025 21:10:00 +0300
+ -- Overl1te <Overl1teGithub@yandex.ru>  Fri, 27 Dec 2025 01:00:00 +0300

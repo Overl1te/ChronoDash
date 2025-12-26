@@ -27,10 +27,5 @@ sudo gtk-update-icon-cache /usr/share/icons/hicolor/ 2>/dev/null || true
 
 echo ""
 echo "✅ ChronoDash удален"
-# echo ""
-# echo "=== ОСТАВШИЕСЯ ФАЙЛЫ (ручное удаление) ==="
-# echo "  Конфигурация:   ~/.config/chronodash/"
-# echo "  Кэш:            ~/.cache/chronodash/"
-# echo "  Логи:           ~/.local/share/chronodash/"
-# echo ""
+
 sudo rm -rf ~/.config/chronodash ~/.cache/chronodash ~/.local/share/chronodash
