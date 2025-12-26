@@ -5,7 +5,7 @@ set -e
 APP_NAME="chronodash"
 VERSION="2.2.1"
 EMAIL="Overl1teGithub@yandex.ru"
-PPA_TARGET="chronodash-ppa" # Имя из ~/.dput.cf
+PPA_TARGET="chronodash-ppa"
 # =================
 
 # Цвета для вывода
@@ -16,17 +16,19 @@ NC='\033[0m' # No Color
 
 function show_help {
     echo -e "${BLUE}Использование:${NC}"
-    echo "  ./build_deb.sh release   -> Собрать бинарный .deb (PyInstaller) для GitHub/Debian"
-    echo "  ./build_deb.sh ppa       -> Собрать source package и отправить на Launchpad PPA"
-    echo "  ./build_deb.sh clean     -> Очистить временные файлы"
+    echo "  ./build_deb.sh release          -> Собрать бинарный .deb (PyInstaller)"
+    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить в PPA (можно указать ID ключа)"
+    echo ""
+    echo -e "${BLUE}Примеры:${NC}"
+    echo "  ./build_deb.sh ppa              -> Авто-поиск ключа по email"
+    echo "  ./build_deb.sh ppa 3AA5C343...  -> Использовать конкретный ключ"
 }
 
 function clean_all {
-    echo -e "${BLUE}[Clean] Удаление временных файлов...${NC}"
+    echo -e "${BLUE}[Clean] Очистка...${NC}"
     rm -rf dist build pkg *.deb *.spec venv *.egg-info
-    # Не удаляем папку debian/, она нужна для PPA!
-    rm -rf ../${APP_NAME}_* # Удаляем старые файлы сборки уровнем выше
-}
+    # Удаляем файлы сборки уровнем выше, но оставляем debian/ внутри
+    rm -rf ../${APP_NAME}_* }
 
 function build_release {
     echo -e "${GREEN}=== СБОРКА RELEASE (BINARY .DEB) ===${NC}"
@@ -53,20 +55,17 @@ function build_release {
     mkdir -p pkg/DEBIAN pkg/opt/$APP_NAME pkg/usr/bin
     mkdir -p pkg/usr/share/applications pkg/usr/share/icons/hicolor/64x64/apps
 
-    # Копируем файлы
     cp -r dist/$APP_NAME/* pkg/opt/$APP_NAME/
     cp assets/icons/chronodash.png pkg/usr/share/icons/hicolor/64x64/apps/$APP_NAME.png
 
-    echo -e "${BLUE}[4/5] Генерация метаданных...${NC}"
+    echo -e "${BLUE}[4/5] Метаданные...${NC}"
     
-    # 1. Launcher
     cat > pkg/usr/bin/$APP_NAME <<EOF
 #!/bin/sh
 exec /opt/$APP_NAME/$APP_NAME "\$@"
 EOF
     chmod +x pkg/usr/bin/$APP_NAME
 
-    # 2. Desktop file
     cat > pkg/usr/share/applications/$APP_NAME.desktop <<EOF
 [Desktop Entry]
 Type=Application
@@ -79,7 +78,7 @@ Terminal=false
 Categories=Utility;
 EOF
 
-    # 3. Control file (БЕЗ зависимостей Python, так как все вшито!)
+    # Control для бинарной версии (БЕЗ зависимости от python3-pyside6)
     cat > pkg/DEBIAN/control <<EOF
 Package: $APP_NAME
 Version: $VERSION
@@ -99,43 +98,51 @@ EOF
     dpkg-deb --build pkg "$DEB_NAME"
     
     echo -e "${GREEN}✅ ГОТОВО! Файл: $DEB_NAME${NC}"
-    echo "Установка: sudo dpkg -i $DEB_NAME"
 }
 
 function build_ppa {
+    local KEY_ID="$1" # Получаем аргумент ключа
+    
     echo -e "${GREEN}=== ОТПРАВКА В PPA (SOURCE PACKAGE) ===${NC}"
     
-    # Проверка наличия папки debian/
     if [ ! -d "debian" ]; then
-        echo -e "${RED}ОШИБКА: Нет папки debian/ в корне репозитория!${NC}"
-        echo "Для PPA нужны файлы debian/control, debian/rules и т.д."
+        echo -e "${RED}ОШИБКА: Нет папки debian/!${NC}"
         exit 1
     fi
 
-    # Очистка мусора от PyInstaller, чтобы он не попал в исходники
     clean_all
 
-    echo -e "${BLUE}[1/3] Сборка Source Package (игнорируя зависимости системы)...${NC}"
+    echo -e "${BLUE}[1/3] Сборка Source Package...${NC}"
+    
     # -S: только исходники
     # -sa: включать orig.tar.gz
-    # -d: не проверять зависимости сборки (критично для вашего Debian!)
-    debuild -S -sa -d --no-lintian
+    # -d: игнорировать отсутствие зависимостей (важно для Debian)
+    ARGS="-S -sa -d --no-lintian"
+    
+    if [ -n "$KEY_ID" ]; then
+        echo -e "🔑 Используем ключ: ${GREEN}$KEY_ID${NC}"
+        ARGS="$ARGS -k$KEY_ID"
+    else
+        echo -e "⚠️ Ключ не передан. Будет использован ключ по умолчанию для ${BLUE}$EMAIL${NC}"
+    fi
+
+    # Запуск debuild
+    debuild $ARGS
 
     echo -e "${BLUE}[2/3] Поиск файла .changes...${NC}"
     cd ..
     CHANGES_FILE=$(ls ${APP_NAME}_*source.changes | tail -n 1)
     
     if [ -z "$CHANGES_FILE" ]; then
-        echo -e "${RED}ОШИБКА: Файл .changes не найден! Сборка не удалась?${NC}"
+        echo -e "${RED}ОШИБКА: Файл .changes не найден!${NC}"
         exit 1
     fi
 
-    echo -e "${BLUE}[3/3] Отправка $CHANGES_FILE в $PPA_TARGET...${NC}"
+    echo -e "${BLUE}[3/3] Отправка...${NC}"
     dput $PPA_TARGET $CHANGES_FILE
     
     echo -e "${GREEN}✅ УСПЕШНО ОТПРАВЛЕНО!${NC}"
-    echo "Проверьте статус на Launchpad через 10-20 минут."
-    cd $APP_NAME # Возвращаемся в папку
+    cd $APP_NAME
 }
 
 # === МЕНЮ ===
@@ -144,7 +151,8 @@ case "$1" in
         build_release
         ;;
     ppa)
-        build_ppa
+        # Передаем второй аргумент (ключ) в функцию
+        build_ppa "$2"
         ;;
     clean)
         clean_all
