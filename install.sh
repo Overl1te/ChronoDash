@@ -197,22 +197,67 @@ if [ -z "$ICON_PATH" ]; then
     ICON_PATH="/opt/chronodash/chronodash.png"
 fi
 
+# Создаем MetaInfo
+cat > pkg/usr/share/metainfo/chronodash.metainfo.xml <<XML
+<?xml version="2.2.1" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>chronodash.desktop</id>
+
+  <name>ChronoDash</name>
+  <summary>Customizable desktop widgets for Linux</summary>
+
+  <description>
+    <p>
+      ChronoDash is a modern desktop widgets manager for Linux.
+      It allows you to place elegant, transparent widgets directly
+      on your desktop.
+    </p>
+    <p>
+      Features include clocks, weather information, and real-time
+      system monitoring with an always-on-top, distraction-free design.
+    </p>
+  </description>
+
+  <metadata_license>CC-BY-4.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <developer>
+    <name>Overl1te</name>
+  </developer>
+
+  <url type="homepage">https://github.com/Overl1te/ChronoDash</url>
+  <url type="bugtracker">https://github.com/Overl1te/ChronoDash/issues</url>
+  <url type="source">https://github.com/Overl1te/ChronoDash</url>
+
+  <categories>
+    <category>Utility</category>
+    <category>System</category>
+  </categories>
+
+  <launchable type="desktop-id">chronodash.desktop</launchable>
+</component>
+XML
+
 # Создаем .desktop файл
 echo "Создание файла меню..."
 sudo tee /usr/share/applications/chronodash.desktop > /dev/null << 'DESKTOP'
 [Desktop Entry]
 Type=Application
+Version=2.2.1
+
 Name=ChronoDash
 GenericName=Desktop Widgets
-Comment=Customizable desktop widgets for time, weather, and system monitoring
+Comment=Modern, customizable desktop widgets for time, weather, and system monitoring
+
 Exec=/usr/bin/chronodash
 TryExec=/usr/bin/chronodash
-Icon=icon
+Icon=chronodash
+
 Terminal=false
-Categories=Utility;System;
-Keywords=widget;desktop;time;weather;system;monitor
 StartupNotify=true
-MimeType=
+
+Categories=Utility;System;DesktopSettings;
+Keywords=widget;desktop;clock;time;weather;system;monitor;
 DESKTOP
 
 # Создаем системную иконку
@@ -224,7 +269,7 @@ sudo cp "$ICON_PATH" /usr/share/icons/hicolor/64x64/apps/chronodash.png 2>/dev/n
 echo "Создание конфигурации..."
 cat > ~/.config/chronodash/config.json << 'CONFIG'
 {
-    "version": "2.2.0",
+    "version": "2.2.1",
     "widgets": {
         "clock": {
             "enabled": true,

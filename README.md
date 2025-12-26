@@ -315,7 +315,8 @@ class BaseDesktopWidget(QWidget):
 **📞 Контакты**
 - Автор: Overl1te
 - [GitHub: @Overl1te](https://github.com/Overl1te)
-- [Telegram](https://t.me/WayFullStack)
+- [Telegram channel](https://t.me/WayFullStack)
+- [Email: Overl1teGithub@yandex.ru](mailto:Overl1teGithub@yandex.ru)
 
 **💰 Поддержать проект**
 - [Patreon](https://patreon.com/Overl1te)

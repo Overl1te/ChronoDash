@@ -223,3 +223,6 @@ hook-*.py
 hooks/
 *.AppImage
 AppDir/
+build/
+pkg/
+*.deb

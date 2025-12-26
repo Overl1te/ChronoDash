@@ -50,4 +50,5 @@
 ### 11. Контакты
 По вопросам лицензии и использования:
 GitHub: @Overl1te
-Telegram: @WayFullStack
+Email: Overl1teGithub@yandex.ru
+Telegram channel: @WayFullStack

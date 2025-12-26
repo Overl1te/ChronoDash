@@ -17,7 +17,7 @@ fi
 
 # Очищаем предыдущие сборки
 echo "Очистка старых сборок..."
-rm -rf build/ dist/ *.spec __pycache__/ *.pyc
+rm -rf build/ dist/ *.spec __pycache__/ *.pyc AppImage/ pkg/
 
 # Устанавливаем зависимости
 echo "Установка зависимостей..."

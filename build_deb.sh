@@ -1,54 +1,42 @@
-#!/usr/bin/env bash
-# set -euo pipefail
+#!/bin/bash
+echo "Starting compilation"
+rm -rf *.deb *.spec  # Без sudo
+rm -rf pkg build dist
+echo "Installing dependencies"
 
-echo "=== Сборка ChronoDash v2.2.1-beta AppImage ==="
-
-# 1. Создаём venv и ставим всё нужное
 python3 -m venv venv
 source venv/bin/activate
-pip install --upgrade pip setuptools wheel
-pip install pyinstaller
-pip install -r requirements.txt
+pip install --upgrade pip
+pip install -r requirements.txt pyinstaller
 
-# 2. PyInstaller — onefile + hidden imports для Qt/tkinter
+# 5. Собираем директорией через PyInstaller (без --onefile)
+echo "Compress as onedir"
 pyinstaller \
-  --name ChronoDash \
-  --onefile \
-  --windowed \
-  --icon="assets/icons/chronodash.png" \
+  --name chronodash \
   --add-data "assets:assets" \
-  --add-data "core:core" \
-  --add-data "dashboard:dashboard" \
   --add-data "widgets:widgets" \
-  --hidden-import PySide6.QtSvg \
-  --hidden-import PySide6.QtWidgets \
-  --hidden-import PySide6.QtGui \
-  --hidden-import PySide6.QtCore \
-  --hidden-import PySide6.QtNetwork \
-  --hidden-import tkinter \
+  --windowed \
+  --icon=assets/icon.ico \
   main.py
-deactivate
+echo "Compress done"
 
-# 3. Готовим структуру AppDir
-rm -rf AppDir
-mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/64x64/apps AppDir/usr/share/applications AppDir/usr/share/metainfo
+# 6. Теперь упаковываем в .deb с помощью fpm
+echo "Making an archive"
+echo "Preparing"
+mkdir -p pkg/opt/chronodash pkg/usr/bin pkg/usr/share/applications pkg/usr/share/icons/hicolor/256x256/apps pkg/usr/share/metainfo
 
-# Копируем бинарник → AppRun (обязательно!)
-cp dist/ChronoDash AppDir/usr/bin/AppRun
-chmod +x AppDir/usr/bin/AppRun
+# Копируем директорию в /opt/ (стандартно для проприетарных/самосборных приложений)
+cp -r dist/chronodash/* pkg/opt/chronodash/
 
-# Иконка (ищем подходящую)
-ICON_FOUND=false
-for icon in assets/icons/{logo,chronodash,app,icon}.png; do
-  if [[ -f "$icon" ]]; then
-    cp "$icon" AppDir/usr/share/icons/hicolor/64x64/apps/chronodash.png
-    ICON_FOUND=true
-    break
-  fi
-done
-if ! $ICON_FOUND; then
-  echo "Предупреждение: иконка не найдена в assets/icons/"
-fi
+# Создаём launcher в /usr/bin/ для удобного запуска
+cat > pkg/usr/bin/chronodash <<EOF
+#!/bin/sh
+exec /opt/chronodash/chronodash "\$@"
+EOF
+chmod +x pkg/usr/bin/chronodash
+
+# Иконка (замени путь, если chronodash.png нет в assets/icons/ — например, на assets/icon.png)
+cp assets/icons/chronodash.png pkg/usr/share/icons/hicolor/256x256/apps/chronodash.png
 
 # Создаем MetaInfo
 cat > pkg/usr/share/metainfo/chronodash.metainfo.xml <<XML
@@ -91,8 +79,8 @@ cat > pkg/usr/share/metainfo/chronodash.metainfo.xml <<XML
 </component>
 XML
 
-# .desktop файл
-cat > AppDir/chronodash.desktop << EOF
+# Создаём .desktop-файл
+cat > pkg/usr/share/applications/chronodash.desktop <<EOF
 [Desktop Entry]
 Type=Application
 Version=2.2.1
@@ -111,8 +99,18 @@ StartupNotify=true
 Categories=Utility;System;DesktopSettings;
 Keywords=widget;desktop;clock;time;weather;system;monitor;
 EOF
+echo "Prepare done"
 
-# 4. Собираем AppImage
-appimagetool AppDir ChronoDash-2.2.1-beta-x86_64.AppImage
+# 7. Создаём .deb
+echo "Making deb file"
+fpm -s dir -t deb \
+  -n chronodash \
+  -v 2.2.1-beta \
+  --iteration 1 \
+  --license "GPL-3.0" \
+  --description "Transparent always-on-top desktop widgets (clocks and more)" \
+  --maintainer "Overl1te Overl1teGithub@yandex.ru" \
+  -C pkg \
+  opt/ usr/
 
-echo "Успешно"
+echo "Successful!"
