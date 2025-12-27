@@ -136,7 +136,7 @@ case "\$1" in
         echo "--> Installing PySide6 via pip (fetching from PyPI)..."
         # Устанавливаем библиотеки в изолированную среду
         /usr/share/$APP_NAME/venv/bin/pip install --upgrade pip --quiet
-        /usr/share/$APP_NAME/venv/bin/pip install pyside6 --quiet
+        /usr/share/$APP_NAME/venv/bin/pip install PySide6 --quiet
         if [ -f "/usr/share/$APP_NAME/requirements.txt" ]; then
             /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet
         else
