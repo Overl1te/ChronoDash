@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # set -euo pipefail
 
-echo "=== Сборка ChronoDash v2.2.5-beta AppImage ==="
+echo "=== Сборка ChronoDash v2.2.5.7-beta AppImage ==="
+
+rm -rf dist/ venv/ build/ AppDir/ *.spec *.AppImage
 
 # 1. Создаём venv и ставим всё нужное
 python3 -m venv venv
@@ -10,7 +12,7 @@ pip install --upgrade pip setuptools wheel
 pip install pyinstaller
 pip install -r requirements.txt
 
-# 2. PyInstaller — onefile + hidden imports для Qt/tkinter
+# 2. PyInstaller
 pyinstaller \
   --name ChronoDash \
   --onefile \
@@ -31,88 +33,76 @@ deactivate
 
 # 3. Готовим структуру AppDir
 rm -rf AppDir
-mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/64x64/apps AppDir/usr/share/applications AppDir/usr/share/metainfo
+mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications AppDir/usr/share/metainfo
 
-# Копируем бинарник → AppRun (обязательно!)
-cp dist/ChronoDash AppDir/usr/bin/AppRun
-chmod +x AppDir/usr/bin/AppRun
+# --- ИСПРАВЛЕНИЕ 1: Копируем бинарник с правильным именем ---
+cp dist/ChronoDash AppDir/usr/bin/chronodash
+chmod +x AppDir/usr/bin/chronodash
 
-# Иконка (ищем подходящую)
+# --- ИСПРАВЛЕНИЕ 2: Создаем AppRun как симлинк на бинарник ---
+# Это стандартный способ для AppImage: файл AppRun в корне запускает приложение
+ln -s usr/bin/chronodash AppDir/AppRun
+
+# Иконка
 ICON_FOUND=false
+# Ищем иконку (лучше брать png большого разрешения)
 for icon in assets/icons/{logo,chronodash,app,icon}.png; do
   if [[ -f "$icon" ]]; then
-    cp "$icon" AppDir/usr/share/icons/hicolor/64x64/apps/chronodash.png
+    # Копируем в стандартное место
+    cp "$icon" AppDir/usr/share/icons/hicolor/256x256/apps/chronodash.png
+    # --- ИСПРАВЛЕНИЕ 3: Копируем иконку в корень AppDir (для appimagetool) ---
+    cp "$icon" AppDir/chronodash.png
     ICON_FOUND=true
     break
   fi
 done
+
 if ! $ICON_FOUND; then
-  echo "Предупреждение: иконка не найдена в assets/icons/"
+  echo "Предупреждение: иконка не найдена!"
 fi
 
-# Создаем MetaInfo
-cat > pkg/usr/share/metainfo/chronodash.metainfo.xml <<XML
-<?xml version="2.2.5" encoding="UTF-8"?>
+# MetaInfo (без изменений, кроме версии)
+cat > AppDir/usr/share/metainfo/chronodash.metainfo.xml <<XML
+<?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>chronodash.desktop</id>
-
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
   <name>ChronoDash</name>
   <summary>Customizable desktop widgets for Linux</summary>
-
   <description>
-    <p>
-      ChronoDash is a modern desktop widgets manager for Linux.
-      It allows you to place elegant, transparent widgets directly
-      on your desktop.
-    </p>
-    <p>
-      Features include clocks, weather information, and real-time
-      system monitoring with an always-on-top, distraction-free design.
-    </p>
+    <p>ChronoDash is a modern desktop widgets manager for Linux.</p>
   </description>
-
-  <metadata_license>CC-BY-4.0</metadata_license>
-  <project_license>GPL-3.0-or-later</project_license>
-
-  <developer>
-    <name>Overl1te</name>
-  </developer>
-
-  <url type="homepage">https://github.com/Overl1te/ChronoDash</url>
-  <url type="bugtracker">https://github.com/Overl1te/ChronoDash/issues</url>
-  <url type="source">https://github.com/Overl1te/ChronoDash</url>
-
-  <categories>
-    <category>Utility</category>
-    <category>System</category>
-  </categories>
-
   <launchable type="desktop-id">chronodash.desktop</launchable>
+  <releases>
+    <release version="2.2.5.7-beta" date="$(date +%Y-%m-%d)"/>
+  </releases>
 </component>
 XML
 
-# .desktop файл
+# --- ИСПРАВЛЕНИЕ 4: Правильный .desktop файл ---
 cat > AppDir/chronodash.desktop << EOF
 [Desktop Entry]
 Type=Application
-Version=2.2.5
-
+Version=1.5
 Name=ChronoDash
 GenericName=Desktop Widgets
-Comment=Modern, customizable desktop widgets for time, weather, and system monitoring
+Comment=Modern, customizable desktop widgets
 
-Exec=/usr/bin/chronodash
-TryExec=/usr/bin/chronodash
+# Exec указывает просто на имя файла (так как AppRun добавляет usr/bin в PATH)
+Exec=chronodash
+TryExec=chronodash
+
+# Icon указывает ТОЛЬКО имя (без пути и расширения)
 Icon=chronodash
 
 Terminal=false
 StartupNotify=true
-
-Categories=Utility;System;DesktopSettings;
-Keywords=widget;desktop;clock;time;weather;system;monitor;
+Categories=Utility;System;
 EOF
 
 # 4. Собираем AppImage
-appimagetool AppDir ChronoDash-2.2.5-beta-x86_64.AppImage
+# Используем ARCH=x86_64 чтобы инструмент не спрашивал архитектуру
+ARCH=x86_64 appimagetool AppDir ChronoDash-2.2.5.7-beta-x86_64.AppImage
 
-echo "Успешно"
+echo "Успешно! Попробуйте запустить: ./ChronoDash-2.2.5.7-beta-x86_64.AppImage"

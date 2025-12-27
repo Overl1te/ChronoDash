@@ -3,7 +3,7 @@ set -e
 
 # === НАСТРОЙКИ ===
 APP_NAME="chronodash"
-VERSION="2.2.8" # Поднял версию
+VERSION="2.2.5.7-beta"
 EMAIL="Overl1teGithub@yandex.ru"
 PPA_TARGET="chronodash-ppa"
 # =================
@@ -27,7 +27,7 @@ function clean_all {
     rm -rf ../${APP_NAME}_*
 }
 
-# === ВАРИАНТ 1: RELEASE (PyInstaller) ===
+# === ВАРИАНТ 1: RELEASE ===
 function build_release {
     echo -e "${GREEN}=== СБОРКА RELEASE (PYINSTALLER / STANDALONE) ===${NC}"
     clean_all
@@ -102,7 +102,7 @@ EOF
     echo -e "${GREEN}✅ ГОТОВО! Файл: $DEB_NAME${NC}"
 }
 
-# === ВАРИАНТ 2: PPA (ГИБРИДНЫЙ) ===
+# === ВАРИАНТ 2: PPA ===
 function build_ppa {
     local KEY_ID="$1"
     
@@ -115,7 +115,7 @@ function build_ppa {
 
     echo -e "${BLUE}[1/2] Генерация конфигурации PPA...${NC}"
 
-    # 1. CONTROL (БЫЛО ПРОПУЩЕНО)
+    # 1. CONTROL
     cat > debian/control <<EOF
 Source: $APP_NAME
 Section: utils
@@ -192,8 +192,7 @@ exit 0
 EOF
     chmod +x debian/prerm
 
-    # 4. INSTALL (БЫЛО ПРОПУЩЕНО - КРИТИЧНО!)
-    # Без этого файла папка /usr/share/chronodash/ пуста!
+    # 4. INSTALL
     cat > debian/install <<EOF
 requirements.txt usr/share/$APP_NAME/
 main.py usr/share/$APP_NAME/
