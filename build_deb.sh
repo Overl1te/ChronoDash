@@ -156,6 +156,11 @@ case "\$1" in
         # Устанавливаем библиотеки в изолированную среду
         /usr/share/$APP_NAME/venv/bin/pip install --upgrade pip --quiet
         /usr/share/$APP_NAME/venv/bin/pip install pyside6 --quiet
+        if [ -f "/usr/share/$APP_NAME/requirements.txt" ]; then
+            /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet
+        else
+            echo "WARNING: requirements.txt not found in package!"
+        fi
         
         # Исправляем права, чтобы обычный пользователь мог запускать
         chmod -R a+rX /usr/share/$APP_NAME/venv
