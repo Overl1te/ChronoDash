@@ -1,8 +1,0 @@
-main.py usr/share/chronodash/
-requirements.txt usr/share/chronodash/
-core/ usr/share/chronodash/
-widgets/ usr/share/chronodash/
-dashboard/ usr/share/chronodash/
-assets/ usr/share/chronodash/
-debian/chronodash.desktop usr/share/applications/
-assets/icons/chronodash.png usr/share/icons/hicolor/64x64/apps/

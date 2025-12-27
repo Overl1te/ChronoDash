@@ -197,6 +197,7 @@ EOF
     # 4. INSTALL: Куда класть файлы
     cat > debian/install <<EOF
 main.py usr/share/$APP_NAME/
+requirements.txt usr/share/$APP_NAME/
 core/ usr/share/$APP_NAME/
 widgets/ usr/share/$APP_NAME/
 dashboard/ usr/share/$APP_NAME/
@@ -254,7 +255,7 @@ MAKE
     fi
 
     echo -e "${BLUE}Отправка...${NC}"
-    dput $PPA_TARGET $CHANGES_FILE
+    #dput $PPA_TARGET $CHANGES_FILE
     
     echo -e "${GREEN}✅ УСПЕШНО ОТПРАВЛЕНО В PPA!${NC}"
     #echo "Теперь при установке 'sudo apt install' у пользователя сам скачается PySide6."
