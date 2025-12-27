@@ -174,6 +174,29 @@ esac
 exit 0
 EOF
     chmod +x debian/prerm
+
+    # 5. RULES: Создаем кастомный скрипт запуска через venv
+    cat > debian/rules <<MAKE
+#!/usr/bin/make -f
+
+%:
+	dh \$@ --with python3
+
+override_dh_auto_build:
+	true
+
+override_dh_auto_install:
+	true
+
+override_dh_install:
+	dh_install
+	mkdir -p debian/$APP_NAME/usr/bin
+	# Лаунчер запускает python из venv!
+	echo '#!/bin/sh' > debian/$APP_NAME/usr/bin/$APP_NAME
+	echo 'exec /usr/share/$APP_NAME/venv/bin/python3 /usr/share/$APP_NAME/main.py "\$\$@"' >> debian/$APP_NAME/usr/bin/$APP_NAME
+	chmod +x debian/$APP_NAME/usr/bin/$APP_NAME
+MAKE
+
     chmod +x debian/rules
 
     echo -e "${BLUE}[2/2] Сборка и отправка...${NC}"
