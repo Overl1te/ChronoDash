@@ -42,6 +42,7 @@ function build_release {
     source venv/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt pyinstaller
+    sudo apt install python3-tk
 
     echo -e "${BLUE}[2/5] Компиляция PyInstaller...${NC}"
     pyinstaller --noconfirm --onedir --windowed --clean \
