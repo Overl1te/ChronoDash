@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # set -euo pipefail
 
-echo "=== Сборка ChronoDash v2.2.4-beta AppImage ==="
+echo "=== Сборка ChronoDash v2.2.5-beta AppImage ==="
 
 # 1. Создаём venv и ставим всё нужное
 python3 -m venv venv
@@ -52,7 +52,7 @@ fi
 
 # Создаем MetaInfo
 cat > pkg/usr/share/metainfo/chronodash.metainfo.xml <<XML
-<?xml version="2.2.4" encoding="UTF-8"?>
+<?xml version="2.2.5" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>chronodash.desktop</id>
 
@@ -95,7 +95,7 @@ XML
 cat > AppDir/chronodash.desktop << EOF
 [Desktop Entry]
 Type=Application
-Version=2.2.4
+Version=2.2.5
 
 Name=ChronoDash
 GenericName=Desktop Widgets
@@ -113,6 +113,6 @@ Keywords=widget;desktop;clock;time;weather;system;monitor;
 EOF
 
 # 4. Собираем AppImage
-appimagetool AppDir ChronoDash-2.2.4-beta-x86_64.AppImage
+appimagetool AppDir ChronoDash-2.2.5-beta-x86_64.AppImage
 
 echo "Успешно"
