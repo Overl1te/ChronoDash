@@ -121,25 +121,6 @@ function build_ppa {
 
     echo -e "${BLUE}[1/2] Генерация конфигурации PPA (обход зависимостей)...${NC}"
 
-    # 1. CONTROL: Убираем python3-pyside6, добавляем pip и venv
-    cat > debian/control <<EOF
-Source: $APP_NAME
-Section: utils
-Priority: optional
-Maintainer: Overl1te <$EMAIL>
-Build-Depends: debhelper-compat (= 13), python3-all, dh-python
-Standards-Version: 4.6.2
-Homepage: https://github.com/Overl1te/ChronoDash
-
-Package: $APP_NAME
-Architecture: all
-Depends: \${python3:Depends}, \${misc:Depends}, python3-pip, python3-venv, python3-tk, libgl1
-Description: ChronoDash Desktop Widgets
- Application for tracking time.
- NOTE: This package will download PySide6 via pip during installation
- because it is missing from standard repositories.
-EOF
-
     # 2. POSTINST: Скрипт, который выполняется ПОСЛЕ установки
     cat > debian/postinst <<EOF
 #!/bin/sh
@@ -193,40 +174,6 @@ esac
 exit 0
 EOF
     chmod +x debian/prerm
-
-    # 4. INSTALL: Куда класть файлы
-    cat > debian/install <<EOF
-main.py usr/share/$APP_NAME/
-requirements.txt usr/share/$APP_NAME/
-core/ usr/share/$APP_NAME/
-widgets/ usr/share/$APP_NAME/
-dashboard/ usr/share/$APP_NAME/
-assets/ usr/share/$APP_NAME/
-debian/$APP_NAME.desktop usr/share/applications/
-assets/icons/chronodash.png usr/share/icons/hicolor/64x64/apps/
-EOF
-
-    # 5. RULES: Создаем кастомный скрипт запуска через venv
-    cat > debian/rules <<MAKE
-#!/usr/bin/make -f
-
-%:
-	dh \$@ --with python3
-
-override_dh_auto_build:
-	true
-
-override_dh_auto_install:
-	true
-
-override_dh_install:
-	dh_install
-	mkdir -p debian/$APP_NAME/usr/bin
-	# Лаунчер запускает python из venv!
-	echo '#!/bin/sh' > debian/$APP_NAME/usr/bin/$APP_NAME
-	echo 'exec /usr/share/$APP_NAME/venv/bin/python3 /usr/share/$APP_NAME/main.py "\$\$@"' >> debian/$APP_NAME/usr/bin/$APP_NAME
-	chmod +x debian/$APP_NAME/usr/bin/$APP_NAME
-MAKE
     chmod +x debian/rules
 
     echo -e "${BLUE}[2/2] Сборка и отправка...${NC}"
