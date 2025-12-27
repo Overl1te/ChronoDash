@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Qt](https://img.shields.io/badge/Qt-PySide6-green.svg)
 ![Windows](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Mac-lightgrey.svg)
-![License](https://img.shields.io/badge/license-%20%20GNU%20GPLv3%20-green?style=plastic)
+![License](https://img.shields.io/badge/license-%20%20GNU%20GPLv3%20-green)
 
 **Мощная платформа для создания и управления виджетами на рабочем столе**
 
@@ -49,18 +49,24 @@ Coming soon...
 
 ### Системные требования
 - **Windows 7+ / Linux / macOS**
-- **100 МБ свободного места на диске**
+- **150 МБ свободного места на диске**
 
 
 ### Вариант 1: Скачать готовый билд (рекомендуется)
 
 #### Windows
 1. Перейдите в [Releases](https://github.com/Overl1te/ChronoDash/releases)
-2. Скачайте последнюю версию `ChronoDash.exe` или `ChronoDash_Setup.exe`
-3. Запустите файл - программа запустится в системном трее
+2. Скачайте последнюю версию `ChronoDash_Setup.exe`
+3. Установите и запустите - программа запустится в системном трее
 
 
 #### Linux
+
+##### • Универасальный метод
+1. Перейдите в [Releases](https://github.com/Overl1te/ChronoDash/releases)
+2. Скачайте последнюю версию `ChronoDash.AppImage`
+3. Запустите ChronoDash - появится окно программы
+
 ##### • Arch Linux
 Способ 1:
 1. Перейдите в [Releases](https://github.com/Overl1te/ChronoDash/releases)
@@ -78,6 +84,20 @@ paru -S chronodash
 chronodash
 ```
 
+##### • Debian / Ubuntu
+Способ 1:
+1. Перейдите в [Releases](https://github.com/Overl1te/ChronoDash/releases)
+2. Скачайте последнюю версию `ChronoDash.deb`
+3. Установите, запустите ChronoDash - появится окно программы
+
+Способ 2:
+```bash
+# Установите из отого репозитория
+sudo apt install chronodash
+
+# Запустите
+chronodash
+```
 
 ### Вариант 2: Установка из исходников
 
@@ -86,7 +106,12 @@ chronodash
 git clone https://github.com/Overl1te/ChronoDash.git
 cd ChronoDash
 
+# Обязательно активируйте venv
+python venv venv
+source venv/bin/activate
+
 # Установить зависимости
+# Из-за различий ос при компиляци возможны ошибки установки некоторых пакетов. Установите их вручную, если потребуется
 pip install -r requirements.txt
 
 # Запустить
@@ -192,10 +217,10 @@ if widget_type == "my_widget":
 #### Windows
 ```bash
 # Сборка с Nuitka
-python -m nuitka --standalone --windows-console-mode=disable --enable-plugin=pyside6 --enable-plugin=tk-inter --follow-imports --output-dir=build --windows-icon-from-ico=assets/icons/logo.ico --include-data-dir=assets=assets --output-filename=ChronoDash.exe main.py
+python -m nuitka --standalone --windows-console-mode=disable --enable-plugin=pyside6 --nofollow-import-to=tkinter --follow-imports --output-dir=build --windows-icon-from-ico=assets/icons/chronodash.ico --include-data-dir=assets=assets --assume-yes-for-downloads --mingw64 --include-package=urllib3 --include-package=requests --include-package=certifi --output-filename=ChronoDash.exe main.py
 
 # Или с PyInstaller
-pyinstaller --name=ChronoDash --windowed --icon=assets/icons/logo.ico --add-data "assets;assets" main.py
+pyinstaller --onedir --name ChronoDash --icon assets/icons/chronodash.png --add-data "assets:assets" --add-data "core:core" --add-data "widgets:widgets" --hidden-import tkinter --hidden-import tkinter.ttk --hidden-import tkinter.font --hidden-import tkinter.messagebox --hidden-import tkinter.filedialog --hidden-import _tkinter --hidden-import customtkinter --hidden-import PySide6 --hidden-import PySide6.QtCore --hidden-import PySide6.QtGui --hidden-import PySide6.QtWidgets --hidden-import PySide6.QtSvg --hidden-import PySide6.QtNetwork --hidden-import pystray --hidden-import pystray._xorg --hidden-import Xlib --hidden-import Xlib.display --hidden-import openmeteo_requests --hidden-import requests_cache --hidden-import retry_requests --hidden-import numpy --hidden-import pandas --hidden-import psutil --hidden-import PIL --hidden-import PIL._imaging --exclude-module matplotlib --exclude-module scipy --clean --noconfirm --console main.py
 ```
 #### Arch Linux
 ```bash
@@ -205,6 +230,15 @@ pyinstaller --name=ChronoDash --windowed --icon=assets/icons/logo.ico --add-data
 ./install.sh
 # Удаление
 sudo ./uninstall.sh
+```
+#### Debian / Ubuntu
+```bash
+# Инструкция выдается при использовании
+./build_deb.sh
+```
+#### AppImage
+```bash
+./build_appimage.sh
 ```
 
 
@@ -287,6 +321,8 @@ class BaseDesktopWidget(QWidget):
 
 - [ ] Расширение кастомизации виджетов
 - [ ] Удобное создание виджетов
+- [x] Добавить кроссплатформенность на Linux
+- [ ] Добавить кроссплатформенность на Mac os
 - [ ] Добавление шаблонов
 - [ ] Импортирование/экспортирование виджетов
 - [ ] Взаимодействие с приложениями

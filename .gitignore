@@ -226,3 +226,4 @@ AppDir/
 build/
 pkg/
 *.deb
+clean.sh
