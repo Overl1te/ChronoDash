@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with python3
+
+override_dh_auto_install:
+	dh_auto_install
+	# Создаем папку bin в директории пакета
+	mkdir -p debian/chronodash/usr/bin
+	# Создаем скрипт запуска
+	echo '#!/bin/sh' > debian/chronodash/usr/bin/chronodash
+	echo 'python3 /usr/share/chronodash/main.py "$$@"' >> debian/chronodash/usr/bin/chronodash
+	chmod +x debian/chronodash/usr/bin/chronodash
