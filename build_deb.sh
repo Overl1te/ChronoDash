@@ -3,7 +3,7 @@ set -e
 
 # === НАСТРОЙКИ ===
 APP_NAME="chronodash"
-VERSION="2.2.5"
+VERSION="2.2.7" # Подняли версию
 EMAIL="Overl1teGithub@yandex.ru"
 PPA_TARGET="chronodash-ppa"
 # =================
@@ -16,12 +16,8 @@ NC='\033[0m' # No Color
 
 function show_help {
     echo -e "${BLUE}Использование:${NC}"
-    echo "  ./build_deb.sh release          -> Собрать 'толстый' .deb (PyInstaller). РАБОТАЕТ ВЕЗДЕ."
-    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить ГИБРИДНЫЙ PPA (докачивает PySide6 через pip)."
-    echo ""
-    echo -e "${BLUE}Примеры:${NC}"
-    echo "  ./build_deb.sh release"
-    echo "  ./build_deb.sh ppa EEC86D2065150ECE"
+    echo "  ./build_deb.sh release          -> Собрать 'толстый' .deb (PyInstaller)."
+    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить ГИБРИДНЫЙ PPA (venv + pip)."
 }
 
 function clean_all {
@@ -31,8 +27,7 @@ function clean_all {
     rm -rf ../${APP_NAME}_*
 }
 
-# === ВАРИАНТ 1: ДЛЯ ВАС (Debian) И GITHUB RELEASES ===
-# Собирает всё в один файл (включая PySide6), не зависит от системного Python
+# === ВАРИАНТ 1: RELEASE (PyInstaller) ===
 function build_release {
     echo -e "${GREEN}=== СБОРКА RELEASE (PYINSTALLER / STANDALONE) ===${NC}"
     clean_all
@@ -42,7 +37,12 @@ function build_release {
     source venv/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt pyinstaller
-    sudo apt install python3-tk
+    
+    # Проверка tk
+    if ! dpkg -s python3-tk >/dev/null 2>&1; then
+        echo "Предупреждение: python3-tk не найден, ставим..."
+        sudo apt install -y python3-tk
+    fi
 
     echo -e "${BLUE}[2/5] Компиляция PyInstaller...${NC}"
     pyinstaller --noconfirm --onedir --windowed --clean \
@@ -62,8 +62,7 @@ function build_release {
     cp -r dist/$APP_NAME/* pkg/opt/$APP_NAME/
     cp assets/icons/chronodash.png pkg/usr/share/icons/hicolor/64x64/apps/$APP_NAME.png
 
-    echo -e "${BLUE}[4/5] Метаданные...${NC}"
-    
+    # Лаунчер для Release версии
     cat > pkg/usr/bin/$APP_NAME <<EOF
 #!/bin/sh
 exec /opt/$APP_NAME/$APP_NAME "\$@"
@@ -82,7 +81,6 @@ Terminal=false
 Categories=Utility;
 EOF
 
-    # Control для бинарной версии
     cat > pkg/DEBIAN/control <<EOF
 Package: $APP_NAME
 Version: $VERSION
@@ -102,26 +100,22 @@ EOF
     dpkg-deb --build pkg "$DEB_NAME"
     
     echo -e "${GREEN}✅ ГОТОВО! Файл: $DEB_NAME${NC}"
-    echo "Установка (работает на Debian Trixie): sudo dpkg -i $DEB_NAME"
 }
 
-# === ВАРИАНТ 2: ДЛЯ PPA / UBUNTU (ГИБРИДНЫЙ) ===
-# Генерирует файлы debian/ на лету, чтобы добавить pip-install скрипты
+# === ВАРИАНТ 2: PPA (ГИБРИДНЫЙ) ===
 function build_ppa {
     local KEY_ID="$1"
     
-    echo -e "${GREEN}=== СБОРКА ГИБРИДНОГО PPA (PIP-INSTALLER) ===${NC}"
+    echo -e "${GREEN}=== СБОРКА ГИБРИДНОГО PPA (venv + pip) ===${NC}"
     
-    if [ ! -d "debian" ]; then
-        echo -e "${RED}ОШИБКА: Нет папки debian/ в корне проекта!${NC}"
-        exit 1
-    fi
+    # Создаем папку debian если нет, или очищаем старую конфигурацию но оставляем папку
+    mkdir -p debian
 
     clean_all
 
-    echo -e "${BLUE}[1/2] Генерация конфигурации PPA (обход зависимостей)...${NC}"
+    echo -e "${BLUE}[1/2] Генерация конфигурации PPA...${NC}"
 
-    # 2. POSTINST: Скрипт, который выполняется ПОСЛЕ установки
+    # 2. POSTINST (Установка зависимостей)
     cat > debian/postinst <<EOF
 #!/bin/sh
 set -e
@@ -133,17 +127,19 @@ case "\$1" in
             python3 -m venv /usr/share/$APP_NAME/venv
         fi
         
-        echo "--> Installing PySide6 via pip (fetching from PyPI)..."
-        # Устанавливаем библиотеки в изолированную среду
+        echo "--> Installing dependencies via pip..."
         /usr/share/$APP_NAME/venv/bin/pip install --upgrade pip --quiet
-        /usr/share/$APP_NAME/venv/bin/pip install PySide6 --quiet
+        
+        # Если есть requirements.txt, ставим из него
         if [ -f "/usr/share/$APP_NAME/requirements.txt" ]; then
-            /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet
+            echo "Installing from requirements.txt..."
+            # --break-system-packages нужен для pip в последних версиях Debian/Ubuntu даже в venv иногда
+            /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet --break-system-packages || /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet
         else
-            echo "WARNING: requirements.txt not found in package!"
+            echo "WARNING: requirements.txt not found! Installing base set..."
+            /usr/share/$APP_NAME/venv/bin/pip install PySide6 customtkinter Pillow requests --quiet
         fi
         
-        # Исправляем права, чтобы обычный пользователь мог запускать
         chmod -R a+rX /usr/share/$APP_NAME/venv
     ;;
 
@@ -161,7 +157,7 @@ exit 0
 EOF
     chmod +x debian/postinst
 
-    # 3. PRERM: Удаление venv при сносе программы
+    # 3. PRERM
     cat > debian/prerm <<EOF
 #!/bin/sh
 set -e
@@ -175,7 +171,7 @@ exit 0
 EOF
     chmod +x debian/prerm
 
-    # 5. RULES: Создаем кастомный скрипт запуска через venv
+    # 5. RULES
     cat > debian/rules <<MAKE
 #!/usr/bin/make -f
 
@@ -191,27 +187,22 @@ override_dh_auto_install:
 override_dh_install:
 	dh_install
 	mkdir -p debian/$APP_NAME/usr/bin
-	# Лаунчер запускает python из venv!
+	# ВАЖНО: Мы прописываем путь к python внутри venv!
 	echo '#!/bin/sh' > debian/$APP_NAME/usr/bin/$APP_NAME
 	echo 'exec /usr/share/$APP_NAME/venv/bin/python3 /usr/share/$APP_NAME/main.py "\$\$@"' >> debian/$APP_NAME/usr/bin/$APP_NAME
 	chmod +x debian/$APP_NAME/usr/bin/$APP_NAME
 MAKE
-
     chmod +x debian/rules
 
     echo -e "${BLUE}[2/2] Сборка и отправка...${NC}"
     
-    # -S: только исходники
-    # -sa: включать orig.tar.gz
-    # -d: игнорировать зависимости сборки (важно для Debian!)
-    #ARGS="-S -sa -d --no-lintian"
     ARGS="-S -sa -d"
     
     if [ -n "$KEY_ID" ]; then
         echo -e "🔑 Используем ключ: ${GREEN}$KEY_ID${NC}"
         ARGS="$ARGS -k$KEY_ID"
     else
-        echo -e "⚠️ Ключ не передан. Будет использован ключ по умолчанию для ${BLUE}$EMAIL${NC}"
+        echo -e "⚠️ Ключ не передан."
     fi
 
     debuild $ARGS
@@ -225,28 +216,15 @@ MAKE
     fi
 
     echo -e "${BLUE}Отправка...${NC}"
-    #dput $PPA_TARGET $CHANGES_FILE
+    dput $PPA_TARGET $CHANGES_FILE
     
     echo -e "${GREEN}✅ УСПЕШНО ОТПРАВЛЕНО В PPA!${NC}"
-    #echo "Теперь при установке 'sudo apt install' у пользователя сам скачается PySide6."
-    
-    # Возвращаемся в папку проекта
     cd "$APP_NAME" || cd ChronoDash || true
 }
 
-# === МЕНЮ ===
 case "$1" in
-    release)
-        build_release
-        ;;
-    ppa)
-        build_ppa "$2"
-        ;;
-    clean)
-        clean_all
-        ;;
-    *)
-        show_help
-        exit 1
-        ;;
+    release) build_release ;;
+    ppa) build_ppa "$2" ;;
+    clean) clean_all ;;
+    *) show_help; exit 1 ;;
 esac
