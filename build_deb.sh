@@ -3,7 +3,7 @@ set -e
 
 # === НАСТРОЙКИ ===
 APP_NAME="chronodash"
-VERSION="2.2.7" # Подняли версию
+VERSION="2.2.8" # Поднял версию
 EMAIL="Overl1teGithub@yandex.ru"
 PPA_TARGET="chronodash-ppa"
 # =================
@@ -108,14 +108,32 @@ function build_ppa {
     
     echo -e "${GREEN}=== СБОРКА ГИБРИДНОГО PPA (venv + pip) ===${NC}"
     
-    # Создаем папку debian если нет, или очищаем старую конфигурацию но оставляем папку
+    # Создаем папку debian если нет
     mkdir -p debian
 
     clean_all
 
     echo -e "${BLUE}[1/2] Генерация конфигурации PPA...${NC}"
 
-    # 2. POSTINST (Установка зависимостей)
+    # 1. CONTROL (БЫЛО ПРОПУЩЕНО)
+    cat > debian/control <<EOF
+Source: $APP_NAME
+Section: utils
+Priority: optional
+Maintainer: Overl1te <$EMAIL>
+Build-Depends: debhelper-compat (= 13), python3-all, dh-python
+Standards-Version: 4.6.2
+Homepage: https://github.com/Overl1te/ChronoDash
+
+Package: $APP_NAME
+Architecture: all
+Depends: \${python3:Depends}, \${misc:Depends}, python3-pip, python3-venv, python3-tk, libgl1
+Description: ChronoDash Desktop Widgets
+ Application for tracking time.
+ NOTE: This package will download dependencies via pip into /usr/share/$APP_NAME/venv during installation.
+EOF
+
+    # 2. POSTINST
     cat > debian/postinst <<EOF
 #!/bin/sh
 set -e
@@ -123,6 +141,9 @@ set -e
 case "\$1" in
     configure)
         echo "--> Creating virtual environment for ChronoDash..."
+        # Убедимся, что родительская папка существует
+        mkdir -p /usr/share/$APP_NAME
+        
         if [ ! -d "/usr/share/$APP_NAME/venv" ]; then
             python3 -m venv /usr/share/$APP_NAME/venv
         fi
@@ -133,7 +154,7 @@ case "\$1" in
         # Если есть requirements.txt, ставим из него
         if [ -f "/usr/share/$APP_NAME/requirements.txt" ]; then
             echo "Installing from requirements.txt..."
-            # --break-system-packages нужен для pip в последних версиях Debian/Ubuntu даже в venv иногда
+            # --break-system-packages нужен для pip в последних версиях, даже в venv бывает полезен
             /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet --break-system-packages || /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet
         else
             echo "WARNING: requirements.txt not found! Installing base set..."
@@ -170,6 +191,19 @@ esac
 exit 0
 EOF
     chmod +x debian/prerm
+
+    # 4. INSTALL (БЫЛО ПРОПУЩЕНО - КРИТИЧНО!)
+    # Без этого файла папка /usr/share/chronodash/ пуста!
+    cat > debian/install <<EOF
+requirements.txt usr/share/$APP_NAME/
+main.py usr/share/$APP_NAME/
+core/ usr/share/$APP_NAME/
+widgets/ usr/share/$APP_NAME/
+dashboard/ usr/share/$APP_NAME/
+assets/ usr/share/$APP_NAME/
+debian/$APP_NAME.desktop usr/share/applications/
+assets/icons/chronodash.png usr/share/icons/hicolor/64x64/apps/
+EOF
 
     # 5. RULES
     cat > debian/rules <<MAKE
