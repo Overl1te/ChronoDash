@@ -3,7 +3,7 @@ set -e
 
 # === НАСТРОЙКИ ===
 APP_NAME="chronodash"
-VERSION="2.2.6-beta"
+VERSION="2.2.7-beta"
 EMAIL="Overl1teGithub@yandex.ru"
 PPA_TARGET="chronodash-ppa"
 # =================

@@ -1,1 +1,1 @@
-rm -rf dist/ venv/ build/ AppDir/ *.spec *.AppImage *.deb __pycache__/
+rm -rf dist/ venv/ build/ AppDir/ *.spec *.AppImage *.deb __pycache__/ pkg/

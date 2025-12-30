@@ -1,3 +1,6 @@
+# ChronoDash - Base Widget
+# Copyright (C) 2025 Overl1te
+
 from widgets.base_widget import BaseDesktopWidget
 from PySide6.QtGui import QPainter, QFont, QColor
 from PySide6.QtCore import QDateTime, QTimer, Qt

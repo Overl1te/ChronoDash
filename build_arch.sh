@@ -485,7 +485,7 @@ fi
 
 # Создаем MetaInfo
 sudo tee /usr/share/metainfo/chronodash.metainfo.xml > /dev/null <<XML
-<?xml version="2.2.6-beta" encoding="UTF-8"?>
+<?xml version="2.2.7-beta" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>chronodash.desktop</id>
 

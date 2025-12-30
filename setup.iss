@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "ChronoDash"
-#define MyAppVersion "2.2.6-beta"
+#define MyAppVersion "2.2.7-beta"
 #define MyAppPublisher "Overl1te"
 #define MyAppURL "https://github.com/Overl1te/ChronoDash"
 #define MyAppExeName "ChronoDash.exe"

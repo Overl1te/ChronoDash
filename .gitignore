@@ -227,3 +227,5 @@ build/
 pkg/
 *.deb
 clean.sh
+clear.sh
+clear.sh

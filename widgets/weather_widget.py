@@ -1,4 +1,6 @@
-# ChronoDash - Weather Widget (Fixes)
+# ChronoDash - Base Widget
+# Copyright (C) 2025 Overl1te
+
 import threading
 import requests
 import json

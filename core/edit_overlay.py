@@ -1,18 +1,5 @@
-# ChronoDash - Desktop Widgets
+# ChronoDash - Base Widget
 # Copyright (C) 2025 Overl1te
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 Оверлей для режима редактирования виджета.
@@ -69,6 +56,13 @@ class EditOverlay(QWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         self.grabKeyboard()
         self.show()
+
+    def mouseMoveEvent(self, event):
+        """
+        Пропускаем события движения мыши сквозь оверлей,
+        чтобы виджет под ним мог обновлять курсор (стрелочки ресайза).
+        """
+        event.ignore()
 
     def _resize_to_all_screens(self):
         total_rect = QRect()

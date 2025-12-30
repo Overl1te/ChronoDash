@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # set -euo pipefail
 
-echo "=== Сборка ChronoDash v2.2.6-beta AppImage ==="
+echo "=== Сборка ChronoDash v2.2.7-beta AppImage ==="
 
 rm -rf dist/ venv/ build/ AppDir/ *.spec *.AppImage
 
@@ -74,7 +74,7 @@ cat > AppDir/usr/share/metainfo/chronodash.metainfo.xml <<XML
   <launchable type="desktop-id">chronodash.desktop</launchable>
 
   <releases>
-    <release version="2.2.6-beta" date="$(date +%Y-%m-%d)"/>
+    <release version="2.2.7-beta" date="$(date +%Y-%m-%d)"/>
   </releases>
 </component>
 XML
@@ -102,6 +102,6 @@ EOF
 
 # 4. Собираем AppImage
 # Используем ARCH=x86_64 чтобы инструмент не спрашивал архитектуру
-ARCH=x86_64 appimagetool AppDir ChronoDash-2.2.6-beta-x86_64.AppImage
+ARCH=x86_64 appimagetool AppDir ChronoDash-2.2.7-beta-x86_64.AppImage
 
-echo "Успешно! Попробуйте запустить: ./ChronoDash-2.2.6-beta-x86_64.AppImage"
+echo "Успешно! Попробуйте запустить: ./ChronoDash-2.2.7-beta-x86_64.AppImage"

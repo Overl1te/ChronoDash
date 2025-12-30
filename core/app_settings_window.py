@@ -1,3 +1,6 @@
+# ChronoDash - Base Widget
+# Copyright (C) 2025 Overl1te
+
 import sys
 import os
 import platform
