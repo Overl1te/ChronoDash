@@ -1,0 +1,1 @@
+rm -rf dist/ venv/ build/ AppDir/ *.spec *.AppImage *.deb __pycache__/

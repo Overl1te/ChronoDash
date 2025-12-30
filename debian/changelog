@@ -1,5 +1,5 @@
-chronodash (2.2.5.7-beta-0ubuntu1~ppa1) noble; urgency=low
+chronodash (2.2.6-beta-0ubuntu1~ppa1) noble; urgency=low
 
-  * Final initial version
+  * Fix drag&drop
 
  -- Overl1te <Overl1teGithub@yandex.ru>  Fri, 27 Dec 2025 13:10:00 +0300

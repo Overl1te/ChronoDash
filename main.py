@@ -1,86 +1,76 @@
-# ChronoDash - Desktop Widgets
-# Copyright (C) 2025 Overl1te
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-"""
-Точка входа приложения ChronoDash.
-
-Запускает:
-1. QApplication (главный Qt-поток)
-2. WidgetManager — менеджер всех виджетов
-3. TrayApp — иконку в трее + меню (перезапуск, настройки, выход)
-4. Загружает и показывает все сохранённые виджеты
-
-При выходе из трея (кнопка "Выход") — корректно закрывает все окна и завершает приложение.
-"""
-
-from pathlib import Path
-import platform
 import sys
+import os
+import platform
+import shutil
 import traceback
+from pathlib import Path
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QStandardPaths
+
+# Импортируем наши модули
 from core.widget_manager import WidgetManager
 from core.tray import TrayApp
-from PySide6.QtWidgets import QApplication
-
 
 def main():
-    """
-    Главная функция запуска приложения.
-    
-    Порядок:
-    1. Создаём папку Documents/ChronoDash (если нет)
-    2. Создаём QApplication в главном потоке
-    3. Создаём менеджер виджетов с путём к конфигу
-    4. Запускаем системный трей (блокирует поток)
-    5. При выходе из трея — завершаем Qt-приложение
-    """
-    try:
-        # 1. Создаём папку для конфига
-        docs = Path.home() / "Documents" / "ChronoDash"
-        docs.mkdir(parents=True, exist_ok=True)
-        config_path = docs / "widgets.json"
+    # === 1. Настройка окружения для Linux ===
+    if platform.system() == "Linux":
+            os.environ["QT_IM_MODULE"] = "simple"
+            
+            force_x11 = True # Default
 
-        # 2. Инициализируем QApplication
+            if force_x11:
+                print("Force X11 mode enabled")
+                os.environ["QT_QPA_PLATFORM"] = "xcb"
+            else:
+                # Если юзер отключил, даем Qt выбрать самому (xcb или wayland)
+                if "QT_QPA_PLATFORM" in os.environ:
+                    del os.environ["QT_QPA_PLATFORM"]
+
+    try:
+        # === 2. Настройка путей конфигурации ===
+        # Windows: C:/Users/User/AppData/Local/ChronoDash/
+        # Linux: /home/user/.config/ChronoDash/
+        config_dir = Path(QStandardPaths.writableLocation(QStandardPaths.AppConfigLocation))
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "widgets.json"
+        
+        if config_path.exists():
+            try:
+                import json
+                with open(config_path, 'r') as f:
+                    d = json.load(f)
+                    # Учитываем новую структуру { "global": ... }
+                    if isinstance(d, dict):
+                        g = d.get("global", {})
+                        force_x11 = g.get("force_x11", True)
+            except: pass
+
+        # Миграция старого конфига (если был в Документах)
+        old_path = Path.home() / "Documents" / "ChronoDash" / "widgets.json"
+        if old_path.exists() and not config_path.exists():
+            print(f"Migrating config from {old_path} to {config_path}")
+            shutil.copy(old_path, config_path)
+
+        # === 3. Запуск приложения ===
         app = QApplication.instance() or QApplication(sys.argv)
         app.setQuitOnLastWindowClosed(False)
         app.setApplicationName("ChronoDash")
         app.setApplicationDisplayName("ChronoDash Desktop Widgets")
 
-        # 3. Создаём менеджер виджетов
+        # Менеджер виджетов
         wm = WidgetManager(config_path)
 
-        # 4. Запускаем трей (неблокирующий)
+        # Трей и управление
         tray = TrayApp(wm)
-        tray.run()
-
-        print("ChronoDash успешно запущен!")
-        print("Приложение работает в фоновом режиме.")
         
-        if platform.system() == "Linux":
-            print("На Linux приложение может работать как:")
-            print("  - Иконка в системном трее (если окружение поддерживает)")
-            print("  - Окно управления (если трей недоступен)")
-
-        # 5. Запускаем главный цикл Qt
+        print(f"ChronoDash запущен. Конфиг: {config_path}")
+        
+        # Запуск главного цикла
         sys.exit(app.exec())
 
     except Exception as e:
-        print(f"ERROR: {e}")
+        print(f"CRITICAL ERROR: {e}")
         traceback.print_exc()
-        input("Нажми Enter чтобы выйти...")
-
 
 if __name__ == "__main__":
     main()

@@ -28,13 +28,6 @@ pyinstaller \
     --add-data "assets:assets" \
     --add-data "core:core" \
     --add-data "widgets:widgets" \
-    --hidden-import tkinter \
-    --hidden-import tkinter.ttk \
-    --hidden-import tkinter.font \
-    --hidden-import tkinter.messagebox \
-    --hidden-import tkinter.filedialog \
-    --hidden-import _tkinter \
-    --hidden-import customtkinter \
     --hidden-import PySide6 \
     --hidden-import PySide6.QtCore \
     --hidden-import PySide6.QtGui \
@@ -492,7 +485,7 @@ fi
 
 # Создаем MetaInfo
 sudo tee /usr/share/metainfo/chronodash.metainfo.xml > /dev/null <<XML
-<?xml version="2.2.5.7-beta" encoding="UTF-8"?>
+<?xml version="2.2.6-beta" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>chronodash.desktop</id>
 

@@ -3,7 +3,7 @@ set -e
 
 # === НАСТРОЙКИ ===
 APP_NAME="chronodash"
-VERSION="2.2.5.7-beta"
+VERSION="2.2.6-beta"
 EMAIL="Overl1teGithub@yandex.ru"
 PPA_TARGET="chronodash-ppa"
 # =================
@@ -16,8 +16,8 @@ NC='\033[0m' # No Color
 
 function show_help {
     echo -e "${BLUE}Использование:${NC}"
-    echo "  ./build_deb.sh release          -> Собрать 'толстый' .deb (PyInstaller)."
-    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить ГИБРИДНЫЙ PPA (venv + pip)."
+    echo "  ./build_deb.sh release          -> Собрать .deb."
+    echo "  ./build_deb.sh ppa [KEY_ID]     -> Отправить PPA."
 }
 
 function clean_all {
@@ -37,12 +37,6 @@ function build_release {
     source venv/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt pyinstaller
-    
-    # Проверка tk
-    if ! dpkg -s python3-tk >/dev/null 2>&1; then
-        echo "Предупреждение: python3-tk не найден, ставим..."
-        sudo apt install -y python3-tk
-    fi
 
     echo -e "${BLUE}[2/5] Компиляция PyInstaller...${NC}"
     pyinstaller --noconfirm --onedir --windowed --clean \
@@ -51,8 +45,6 @@ function build_release {
         --add-data "assets:assets" \
         --add-data "core:core" \
         --add-data "widgets:widgets" \
-        --add-data "dashboard:dashboard" \
-        --hidden-import "PIL._tkinter_finder" \
         main.py
 
     echo -e "${BLUE}[3/5] Структура пакета...${NC}"
@@ -127,7 +119,7 @@ Homepage: https://github.com/Overl1te/ChronoDash
 
 Package: $APP_NAME
 Architecture: all
-Depends: \${python3:Depends}, \${misc:Depends}, python3-pip, python3-venv, python3-tk, libgl1
+Depends: \${python3:Depends}, \${misc:Depends}, python3-pip, python3-venv, libgl1
 Description: ChronoDash Desktop Widgets
  Application for tracking time.
  NOTE: This package will download dependencies via pip into /usr/share/$APP_NAME/venv during installation.
@@ -158,7 +150,7 @@ case "\$1" in
             /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet --break-system-packages || /usr/share/$APP_NAME/venv/bin/pip install -r /usr/share/$APP_NAME/requirements.txt --quiet
         else
             echo "WARNING: requirements.txt not found! Installing base set..."
-            /usr/share/$APP_NAME/venv/bin/pip install PySide6 customtkinter Pillow requests --quiet
+            /usr/share/$APP_NAME/venv/bin/pip install PySide6 Pillow requests --quiet
         fi
         
         chmod -R a+rX /usr/share/$APP_NAME/venv
@@ -198,7 +190,6 @@ requirements.txt usr/share/$APP_NAME/
 main.py usr/share/$APP_NAME/
 core/ usr/share/$APP_NAME/
 widgets/ usr/share/$APP_NAME/
-dashboard/ usr/share/$APP_NAME/
 assets/ usr/share/$APP_NAME/
 debian/$APP_NAME.desktop usr/share/applications/
 assets/icons/chronodash.png usr/share/icons/hicolor/64x64/apps/

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # set -euo pipefail
 
-echo "=== Сборка ChronoDash v2.2.5.7-beta AppImage ==="
+echo "=== Сборка ChronoDash v2.2.6-beta AppImage ==="
 
 rm -rf dist/ venv/ build/ AppDir/ *.spec *.AppImage
 
@@ -20,14 +20,12 @@ pyinstaller \
   --icon="assets/icons/chronodash.png" \
   --add-data "assets:assets" \
   --add-data "core:core" \
-  --add-data "dashboard:dashboard" \
   --add-data "widgets:widgets" \
   --hidden-import PySide6.QtSvg \
   --hidden-import PySide6.QtWidgets \
   --hidden-import PySide6.QtGui \
   --hidden-import PySide6.QtCore \
   --hidden-import PySide6.QtNetwork \
-  --hidden-import tkinter \
   main.py
 deactivate
 
@@ -74,8 +72,9 @@ cat > AppDir/usr/share/metainfo/chronodash.metainfo.xml <<XML
     <p>ChronoDash is a modern desktop widgets manager for Linux.</p>
   </description>
   <launchable type="desktop-id">chronodash.desktop</launchable>
+
   <releases>
-    <release version="2.2.5.7-beta" date="$(date +%Y-%m-%d)"/>
+    <release version="2.2.6-beta" date="$(date +%Y-%m-%d)"/>
   </releases>
 </component>
 XML
@@ -103,6 +102,6 @@ EOF
 
 # 4. Собираем AppImage
 # Используем ARCH=x86_64 чтобы инструмент не спрашивал архитектуру
-ARCH=x86_64 appimagetool AppDir ChronoDash-2.2.5.7-beta-x86_64.AppImage
+ARCH=x86_64 appimagetool AppDir ChronoDash-2.2.6-beta-x86_64.AppImage
 
-echo "Успешно! Попробуйте запустить: ./ChronoDash-2.2.5.7-beta-x86_64.AppImage"
+echo "Успешно! Попробуйте запустить: ./ChronoDash-2.2.6-beta-x86_64.AppImage"
